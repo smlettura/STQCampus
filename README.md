@@ -112,7 +112,8 @@ El sistema maneja datos personales sensibles de estudiantes, por lo que consider
 ## Autores
 
 - Simón Andrés Martí Lettura — [@smlettura](https://github.com/smlettura)
-- [Nombre del compañero] — [@usuario](https://github.com/)
+- Diego Vicente Martí Lettura
+- Eric Mauricio Torres Mardones
 
 ## Licencia
 
