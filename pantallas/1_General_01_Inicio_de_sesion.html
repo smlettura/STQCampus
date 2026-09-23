@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>STQCampus · Inicio de sesión</title>
+<style>
+@font-face{font-family:Manrope;font-weight:400;src:url(fuentes/manrope-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:Manrope;font-weight:500;src:url(fuentes/manrope-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:Manrope;font-weight:600;src:url(fuentes/manrope-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:Manrope;font-weight:700;src:url(fuentes/manrope-latin-700-normal.woff2) format('woff2')}
+@font-face{font-family:'JetBrains Mono';font-weight:500;src:url(fuentes/jetbrains-mono-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'JetBrains Mono';font-weight:600;src:url(fuentes/jetbrains-mono-latin-600-normal.woff2) format('woff2')}
+
+body{margin:0;font-family:Manrope,system-ui,sans-serif;color:#0B1220;background:#E4E8EE}
+a{color:#2450C4;text-decoration:none}a:hover{color:#1A3A9E}
+
+body{display:flex;justify-content:center}
+</style>
+</head>
+<body>
+<div id="barra-prototipo" style="position:fixed;top:12px;left:12px;z-index:99;display:flex;gap:8px;align-items:center;background:#0A1120;color:#E2E8F0;border-radius:8px;padding:6px 10px;font:600 12px Manrope,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25)"><a href="../index.html" style="color:#7FA2FF;text-decoration:none">◀ Todas las pantallas</a><span style="opacity:.6">Inicio de sesión</span></div>
+<div style="width: 1440px; height: 900px; display: flex; background: #E4E8EE; overflow: hidden;">
+<div style="width: 640px; flex-shrink: 0; background: #0A1120; color: #E2E8F0; padding: 56px 64px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px;">
+<div style="display: flex; align-items: center; gap: 12px;"><div style="width: 40px; height: 40px; border-radius: 10px; background: #2450C4; display: flex; align-items: center; justify-content: center; color: #FFFFFF; font-weight: 700; font-size: 17px;">S</div><span style="font-weight: 700; font-size: 20px; color: #FFFFFF;">STQCampus</span></div>
+<div style="flex-grow: 1;"></div>
+<span style="font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: #7FA2FF;">PLATAFORMA DE GESTIÓN ESCOLAR</span>
+<h1 style="margin: 0; font-size: 40px; line-height: 1.25; font-weight: 700; color: #FFFFFF;">Tu espacio integral para la gestión educativa.</h1>
+<p style="margin: 0; font-size: 17px; line-height: 1.5; color: #B6C2D4;">Administra, organiza y potencia el bienestar de tu comunidad escolar.</p>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+<div style="padding: 16px; border-radius: 10px; background: #111B2E; border: 1px solid #22304A; display: flex; flex-direction: column; gap: 8px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7FA2FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span style="font-size: 15px; font-weight: 700; color: #FFFFFF;">Gestión de estudiantes</span><span style="font-size: 13px; color: #B6C2D4;">Matrícula, cursos, promoción y egresados.</span></div>
+<div style="padding: 16px; border-radius: 10px; background: #111B2E; border: 1px solid #22304A; display: flex; flex-direction: column; gap: 8px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7FA2FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span style="font-size: 15px; font-weight: 700; color: #FFFFFF;">Convivencia escolar</span><span style="font-size: 13px; color: #B6C2D4;">Atenciones, conflictos, protocolos e indicadores.</span></div>
+</div>
+<div style="flex-grow: 1;"></div>
+<span style="font-size: 13px; color: #B6C2D4;">Colegio Santa Teresa · Quilpué</span>
+</div>
+<div style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+<form style="width: 420px; padding: 36px; background: #FFFFFF; border: 1px solid #CBD2DC; border-radius: 14px; display: flex; flex-direction: column; gap: 18px;">
+<div style="display: flex; flex-direction: column; gap: 6px;"><h2 style="margin: 0; font-size: 26px; font-weight: 700;">Iniciar sesión</h2><span style="font-size: 14px; color: #4B5563;">Usa tu correo institucional.</span></div>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 700;">Correo<input placeholder="nombre@colegiostq.cl" style="height: 44px; padding: 0 14px; border: 1px solid #CBD2DC; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500; color: #0B1220;"></label>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 700;">Contraseña<input type="password" placeholder="••••••••" style="height: 44px; padding: 0 14px; border: 1px solid #CBD2DC; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 500; color: #0B1220;"></label>
+<div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;"><label style="display: flex; align-items: center; gap: 8px; color: #1F2937;"><input type="checkbox" style="width: 16px; height: 16px; margin: 0; accent-color: #2450C4;">Recordarme</label><a href="#" style="font-weight: 700;">¿Olvidaste tu contraseña?</a></div>
+<button style="height: 46px; border: none; border-radius: 8px; background: #2450C4; color: #FFFFFF; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;" onclick="location.href='1_General_02_Atencion_psicosocial.html'">Ingresar</button>
+</form>
+</div>
+</div>
+</body>
+</html>
