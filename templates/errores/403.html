@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block titulo %}Acceso no autorizado{% endblock %}
+{% block contenido %}
+<div class="tarjeta"><h1>Acceso no autorizado</h1>
+<p>Su perfil no tiene permiso para ver esta información. El intento quedó registrado en la bitácora de auditoría.</p>
+<a class="boton" href="{% url 'core:inicio' %}">Volver al inicio</a></div>
+{% endblock %}
+{% block acceso %}<h1>Acceso no autorizado</h1><a class="boton" href="{% url 'cuentas:login' %}">Ingresar</a>{% endblock %}

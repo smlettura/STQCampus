@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titulo %}Constancias{% endblock %}
+{% block contenido %}
+<h1>Constancias de alertas y denuncias</h1>
+<p class="sub">Cada constancia se recalcula al mostrarla: si alguien alterara el registro, aparecería como «alterada» (RF-14).</p>
+<div class="tarjeta tabla-scroll">
+  <h2>Denuncias</h2>
+  <table class="tabla"><thead><tr><th>Alerta</th><th>Institución</th><th>Presentada</th><th>Plazo</th><th>Constancia</th></tr></thead><tbody>
+  {% for d in denuncias %}<tr><td data-rotulo="Alerta"><a href="{% url 'alertas:detalle' d.alerta_id %}">N° {{ d.alerta_id }}</a></td>
+    <td data-rotulo="Institución">{{ d.get_institucion_display }}</td><td data-rotulo="Presentada" class="nowrap">{{ d.fecha_hora_presentacion|date:"d-m-Y H:i" }}</td>
+    <td data-rotulo="Plazo">{% if d.dentro_de_plazo %}<span class="insignia verde">en plazo</span>{% else %}<span class="insignia rojo">fuera de plazo</span>{% endif %}</td>
+    <td data-rotulo="Constancia" class="mono">{{ d.hash_constancia }} {% if d.constancia_integra %}<span class="insignia verde">íntegra</span>{% else %}<span class="insignia rojo">alterada</span>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="5" class="vacio">No hay denuncias.</td></tr>{% endfor %}
+  </tbody></table>
+</div>
+<div class="tarjeta tabla-scroll">
+  <h2>Notificaciones recientes</h2>
+  <table class="tabla"><thead><tr><th>Alerta</th><th>Destinatario</th><th>Canal</th><th>Envío</th><th>Lectura</th><th>Constancia</th></tr></thead><tbody>
+  {% for n in notificaciones %}<tr><td data-rotulo="Alerta"><a href="{% url 'alertas:detalle' n.alerta_id %}">N° {{ n.alerta_id }}</a></td>
+    <td data-rotulo="Destinatario">{{ n.destinatario }}</td><td data-rotulo="Canal">{{ n.get_canal_display }}</td>
+    <td data-rotulo="Envío" class="nowrap">{{ n.fecha_hora_envio|date:"d-m-Y H:i:s" }}</td><td data-rotulo="Lectura" class="nowrap">{{ n.fecha_hora_lectura|date:"d-m-Y H:i"|default:"—" }}</td>
+    <td data-rotulo="Constancia" class="mono">{{ n.hash_constancia|truncatechars:20 }} {% if n.constancia_integra %}<span class="insignia verde">íntegra</span>{% else %}<span class="insignia rojo">alterada</span>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="6" class="vacio">Sin notificaciones.</td></tr>{% endfor %}
+  </tbody></table>
+</div>
+{% endblock %}

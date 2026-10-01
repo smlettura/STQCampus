@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}{{ e }}{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina">
+  <div><h1>{{ e.nombres }} {{ e.apellidos }}</h1>
+    <p class="sub">{{ e.curso.nombre }} {{ e.curso.anio_escolar }} · RUT <span class="nowrap">{{ e.rut|rut }}</span> · {{ e.edad }} años
+      {% for p in programas %}<span class="insignia{% if p == 'PRIORITARIO' %} ambar{% endif %}">{{ p }}</span> {% endfor %}
+      {% if e.matricula_condicional %}<span class="insignia ambar">matrícula condicional</span>{% endif %}
+      <span class="estado {{ e.estado|color_estado }}">{{ e.get_estado_display }}</span></p></div>
+  <div class="acciones">
+    {% if "caso.gestionar" in permisos and e.activo %}<a class="boton" href="{% url 'casos:registrar_atencion' %}?estudiante={{ e.pk }}">Registrar atención</a>{% endif %}
+    {% if "estudiante.gestionar" in permisos %}<a class="boton secundario" href="{% url 'estudiantes:editar' e.pk %}">Editar datos</a>{% endif %}
+    <details class="menu-fila desplegable">
+      <summary class="boton secundario">Más acciones {% icono "chevron" 14 %}</summary>
+      <div class="menu-flotante">
+        {% if "ia.usar" in permisos %}<a href="{% url 'ia:generar_informe' %}?estudiante={{ e.pk }}">{% icono "chispa" 15 %} Generar informe (IA)</a>{% endif %}
+        <a href="{% url 'estudiantes:ficha_pdf' e.pk %}">{% icono "descargar" 15 %} Descargar ficha PDF</a>
+        {% if "caso.gestionar" in permisos and e.activo %}<a href="{% url 'casos:nuevo' %}?estudiante={{ e.pk }}">Abrir caso</a>{% endif %}
+        {% if "anotacion.registrar" in permisos and e.activo %}<a href="{% url 'convivencia:anotacion_nueva' %}?estudiante={{ e.pk }}">Registrar anotación</a>{% endif %}
+        {% if "convivencia.gestionar" in permisos and e.activo %}<a href="{% url 'convivencia:registro_nuevo' %}?estudiante={{ e.pk }}">Registro de situación conductual</a>{% endif %}
+        {% if "plan.gestionar" in permisos %}<a href="{% url 'evaluacion:plan_nuevo' e.pk %}">Nuevo plan de apoyo</a>{% endif %}
+        {% if "arco.gestionar" in permisos %}<a href="{% url 'cumplimiento:arco_nueva' e.pk %}">Solicitud ARCO+</a>{% endif %}
+        {% if "estudiante.gestionar" in permisos %}
+          {% if e.activo %}<hr><a class="peligro" href="{% url 'estudiantes:inactivar' e.pk %}">Marcar como inactivo</a>
+          {% elif e.tipo_salida == "retiro" %}<hr><form method="post" action="{% url 'estudiantes:reactivar' e.pk %}" data-confirmar="¿Reactivar al estudiante?">{% csrf_token %}<button type="submit">Reactivar</button></form>{% endif %}
+        {% endif %}
+      </div>
+    </details>
+  </div>
+</div>
+
+<div class="rejilla">
+  <div class="tarjeta">
+    <h2>Información personal</h2>
+    <dl class="datos">
+      <dt>Primer nombre</dt><dd>{{ e.primer_nombre }}</dd>
+      <dt>Segundo nombre</dt><dd>{{ e.segundo_nombre|default:"—" }}</dd>
+      <dt>Apellidos</dt><dd>{{ e.apellido_paterno }} {{ e.apellido_materno }}</dd>
+      <dt>Nombre social</dt><dd>{{ e.nombre_social|default:"—" }}</dd>
+      <dt>Fecha de nacimiento</dt><dd>{{ e.fecha_nacimiento|date:"d/m/Y" }}</dd>
+    </dl>
+  </div>
+  <div class="tarjeta">
+    <h2>Datos académicos</h2>
+    <dl class="datos">
+      <dt>Curso</dt><dd>{{ e.curso.nombre }} {{ e.curso.anio_escolar }} · sede {{ e.curso.sede }}</dd>
+      <dt>Profesor jefe</dt><dd>{{ e.curso.profesor_jefe|default:"—" }}</dd>
+      <dt>Fecha de ingreso</dt><dd>{{ e.fecha_ingreso|date:"d/m/Y"|default:"—" }}</dd>
+      <dt>Programas</dt><dd>{{ programas|join:", "|default:"Sin programas" }}</dd>
+      <dt>Necesidad educativa</dt><dd>{{ e.get_necesidad_educativa_display }}</dd>
+      {% if e.fecha_egreso %}<dt>{{ e.get_tipo_salida_display }}</dt><dd>{{ e.fecha_egreso|date:"d/m/Y" }}</dd>{% endif %}
+    </dl>
+  </div>
+  <div class="tarjeta">
+    <h2>Apoderados</h2>
+    {% for v in vinculos %}
+      <div class="vinculo">
+        <strong>{{ v.apoderado }}</strong> {% if v.es_titular %}<span class="insignia verde">titular</span>{% endif %}<br>
+        <small class="ayuda">{{ v.get_parentesco_display }} · {{ v.apoderado.telefono|default:"sin teléfono" }} · {{ v.apoderado.correo|default:"sin correo" }}{% if v.apoderado.rut %} · RUT {{ v.apoderado.rut|rut }}{% endif %}</small>
+        {% if "estudiante.gestionar" in permisos %}
+        <div class="acciones chicas">
+          <a href="{% url 'estudiantes:editar_apoderado' v.apoderado.pk %}">Editar datos</a>
+          <form class="enlinea" method="post" action="{% url 'estudiantes:desvincular_apoderado' v.pk %}" data-confirmar="¿Desvincular a este apoderado?">{% csrf_token %}<button class="enlace" type="submit">Desvincular</button></form>
+        </div>{% endif %}
+      </div>
+    {% empty %}<p class="vacio">Sin apoderados vinculados.</p>{% endfor %}
+    {% if "estudiante.gestionar" in permisos %}<a class="boton secundario chico" href="{% url 'estudiantes:vincular_apoderado' e.pk %}">Vincular apoderado</a>{% endif %}
+  </div>
+</div>
+
+{% if casos %}
+<div class="tarjeta tabla-scroll">
+  <h2>Casos</h2>
+  <table class="tabla"><thead><tr><th>Tipo de proceso</th><th>Responsable</th><th>Apertura</th><th>Estado</th></tr></thead><tbody>
+  {% for c in casos %}<tr><td data-rotulo="Tipo"><a href="{% url 'casos:detalle' c.pk %}">{{ c.get_tipo_proceso_display }}</a></td>
+    <td data-rotulo="Responsable">{{ c.responsable }}</td><td data-rotulo="Apertura">{{ c.fecha_apertura|date:"d-m-Y" }}</td>
+    <td data-rotulo="Estado"><span class="insignia {{ c.estado|color_estado }}">{{ c.get_estado_display }}</span></td></tr>{% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+
+{% if anotaciones is not None %}
+<div class="rejilla">
+  <div class="tarjeta">
+    <div class="cabecera-tarjeta"><h2>Anotaciones</h2>
+      {% if "anotacion.registrar" in permisos and e.activo %}<a class="boton secundario chico" href="{% url 'convivencia:anotacion_nueva' %}?estudiante={{ e.pk }}">Registrar anotación</a>{% endif %}</div>
+    <div class="acciones" style="margin-bottom:10px">
+      <span class="insignia verde">Positivas {{ resumen_anotaciones|clave:"positiva"|default:0 }}</span>
+      <span class="insignia ambar">Moderadas {{ resumen_anotaciones|clave:"moderada"|default:0 }}</span>
+      <span class="insignia naranjo">Graves {{ resumen_anotaciones|clave:"grave"|default:0 }}</span>
+      <span class="insignia rojo">Gravísimas {{ resumen_anotaciones|clave:"gravisima"|default:0 }}</span>
+    </div>
+    <ul class="linea">
+    {% for a in anotaciones %}<li class="hito"><div class="cuando">{{ a.fecha|date:"d/m/Y" }} · <strong>{{ a.get_tipo_display }}</strong> · {{ a.registrada_por }}</div><div class="texto">{{ a.descripcion }}</div></li>
+    {% empty %}<p class="vacio">Sin anotaciones.</p>{% endfor %}
+    </ul>
+  </div>
+  {% if registros is not None %}
+  <div class="tarjeta">
+    <div class="cabecera-tarjeta"><h2>Situación conductual</h2>
+      {% if "convivencia.gestionar" in permisos and e.activo %}<a class="boton secundario chico" href="{% url 'convivencia:registro_nuevo' %}?estudiante={{ e.pk }}">Nuevo registro</a>{% endif %}</div>
+    <ul class="linea">
+    {% for r in registros %}<li class="documento"><div class="cuando">{{ r.fecha|date:"d/m/Y" }} · <strong>{{ r.get_categoria_display }}</strong>{% if r.porcentaje_asistencia is not None %} · asistencia {{ r.porcentaje_asistencia|pct }}{% endif %}</div><div class="texto">{{ r.descripcion }}</div></li>
+    {% empty %}<p class="vacio">Sin registros.</p>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if planes is not None %}
+<div class="tarjeta">
+  <h2>Planes de apoyo</h2>
+  {% for p in planes %}
+    <div class="grupo"><strong>{{ p.get_tipo_display }}</strong> <span class="insignia {{ p.estado|color_estado }}">{{ p.get_estado_display }}</span>
+      <small class="ayuda">desde {{ p.fecha_inicio|date:"d-m-Y" }}{% if p.fecha_termino %} hasta {{ p.fecha_termino|date:"d-m-Y" }}{% endif %}</small>
+      <p><em>Adecuaciones para el aula:</em> {{ p.adecuaciones|linebreaksbr }}</p>
+      {% if ve_detalle_plan and p.detalle %}<p><em>Detalle:</em> {{ p.detalle|linebreaksbr }}</p>{% endif %}
+      {% if "plan.gestionar" in permisos and p.estado == "vigente" %}<a href="{% url 'evaluacion:plan_editar' p.pk %}">Editar</a> ·
+        <a href="{% url 'evaluacion:plan_cerrar' p.pk %}">Cerrar plan</a>{% endif %}
+    </div>
+  {% empty %}<p class="vacio">Sin planes registrados.</p>{% endfor %}
+</div>
+{% endif %}
+
+{% if hitos_visibles is not None %}
+<div class="tarjeta">
+  <h2>Hitos compartidos con el profesor jefe</h2>
+  <ul class="linea">
+  {% for h in hitos_visibles %}<li class="hito"><div class="cuando">{{ h.fecha|date:"d-m-Y" }} · {{ h.get_tipo_display }}</div><div class="texto">{{ h.descripcion }}</div></li>
+  {% empty %}<p class="vacio">No hay hitos compartidos.</p>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if consentimientos is not None %}
+<div class="tarjeta tabla-scroll">
+  <div class="encabezado"><h2>Consentimientos informados</h2>
+    <a class="boton secundario chico" href="{% url 'cumplimiento:consentimiento_nuevo' e.pk %}">Registrar consentimiento</a></div>
+  <table class="tabla"><thead><tr><th>Alcance</th><th>Apoderado</th><th>Otorgado</th><th>Estado</th><th></th></tr></thead><tbody>
+  {% for c in consentimientos %}<tr><td data-rotulo="Alcance">{{ c.get_alcance_display }}</td><td data-rotulo="Apoderado">{{ c.apoderado }}</td>
+    <td data-rotulo="Otorgado">{{ c.fecha_otorgamiento|date:"d-m-Y" }}</td>
+    <td data-rotulo="Estado">{% if c.vigente %}<span class="insignia verde">vigente</span>{% else %}<span class="insignia gris">revocado {{ c.fecha_revocacion|date:"d-m-Y" }}</span>{% endif %}</td>
+    <td>{% if c.vigente and not c.fecha_revocacion %}<a href="{% url 'cumplimiento:consentimiento_revocar' c.pk %}">Registrar revocación</a>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="5" class="vacio">Sin consentimientos registrados.</td></tr>{% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+{% endblock %}

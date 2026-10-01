@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block titulo %}No encontrado{% endblock %}
+{% block contenido %}
+<div class="tarjeta"><h1>No encontrado</h1><p>La página o el registro solicitado no existe.</p>
+<a class="boton" href="{% url 'core:inicio' %}">Volver al inicio</a></div>
+{% endblock %}
+{% block acceso %}<h1>No encontrado</h1><a class="boton" href="{% url 'cuentas:login' %}">Ingresar</a>{% endblock %}

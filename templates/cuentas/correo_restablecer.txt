@@ -1,0 +1,9 @@
+{% autoescape off %}Hola, {{ user.nombre_completo }}:
+
+Recibimos una solicitud para restablecer su contraseña de la Plataforma de Bienestar Psicológico Estudiantil.
+Para crear una nueva contraseña, abra este enlace (vale una hora y sirve una sola vez):
+
+{{ protocol }}://{{ domain }}{% url 'cuentas:restablecer_confirmar' uidb64=uid token=token %}
+
+Si usted no lo pidió, ignore este mensaje: su contraseña actual sigue funcionando.
+{% endautoescape %}

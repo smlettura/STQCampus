@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Anotaciones{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>Registro de anotaciones</h1><span class="contexto">Año escolar {{ filtros.anio }}{% if filtros.curso %} · {{ filtros.curso.nombre }}{% endif %}</span></div>
+<div class="kpis">
+  {% for k in kpis %}<div class="kpi{% if k.clave == 'gravisima' and k.valor %} alerta{% endif %}"><span class="rotulo">{{ k.etiqueta }}</span><span class="valor">{{ k.valor|miles }}</span><span class="detalle">{{ k.pct }}% del total</span></div>{% endfor %}
+  <div class="kpi"><span class="rotulo">Total</span><span class="valor">{{ total|miles }}</span><span class="detalle">{{ filtros.anio }}</span></div>
+</div>
+<div class="tarjeta">
+  <div class="cabecera-tarjeta"><h2>Anotaciones por curso</h2>
+    <nav class="pestanas" aria-label="Ciclo">{% for c, t in ciclos %}<a href="{% url_con ciclo=c %}" class="{% if ciclo == c %}activo{% endif %}">{{ t }}</a>{% endfor %}</nav></div>
+  <div class="leyenda" style="margin-bottom:10px">{% for c, t, color in colores %}<span><span class="punto-leyenda {{ color }}"></span>{{ t }}</span>{% endfor %}</div>
+  {{ grafico }}
+  <details class="tabla-grafico"><summary class="ayuda" style="cursor:pointer">Ver los datos del gráfico en una tabla</summary>
+    <table class="tabla"><thead><tr><th>Curso</th>{% for c, t, color in colores %}<th class="num">{{ t }}</th>{% endfor %}<th class="num">Total</th></tr></thead><tbody>
+    {% for f in filas %}<tr><td data-rotulo="Curso">{{ f.etiqueta }}</td>{% for v in f.valores %}<td class="num" data-rotulo="{% cycle 'Positivas' 'Moderadas' 'Graves' 'Gravísimas' %}">{{ v }}</td>{% endfor %}<td class="num" data-rotulo="Total">{{ f.total }}</td></tr>{% endfor %}
+    </tbody></table></details>
+</div>
+<div class="tarjeta">
+  <h2>Últimas anotaciones</h2>
+  <div class="tabla-scroll">
+  <table class="tabla v1"><thead><tr><th>Fecha</th><th>Estudiante</th><th>Curso</th><th>Tipo</th><th>Descripción</th><th>Registró</th></tr></thead><tbody>
+  {% for a in recientes %}<tr><td class="nowrap" data-rotulo="Fecha">{{ a.fecha|date:"d/m/Y" }}</td><td data-rotulo="Estudiante">{{ a.estudiante.nombre_lista }}</td>
+    <td data-rotulo="Curso">{{ a.estudiante.curso.nombre }}</td><td data-rotulo="Tipo"><span class="insignia {{ a.tipo|color_estado }}">{{ a.get_tipo_display }}</span></td>
+    <td data-rotulo="Descripción">{{ a.descripcion|truncatechars:90 }}</td><td data-rotulo="Registró">{{ a.registrada_por }}</td></tr>
+  {% empty %}<tr><td colspan="6" class="vacio">Sin anotaciones en el periodo.</td></tr>{% endfor %}
+  </tbody></table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titulo %}Iniciar sesión{% endblock %}
+{% block acceso %}
+<h1>Iniciar sesión</h1>
+<form method="post" class="form-acceso" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="aviso error" role="alert">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+  {% for campo in form %}{% if campo.name != "recordar" %}
+  <div class="grupo{% if campo.errors %} con-error{% endif %}">
+    <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+    {{ campo }}
+    {% for e in campo.errors %}<p class="error-campo" role="alert">{{ e }}</p>{% endfor %}
+  </div>
+  {% endif %}{% endfor %}
+  <div class="fila-acceso">
+    <label class="grupo-casilla" for="{{ form.recordar.id_for_label }}" title="{{ form.recordar.help_text }}">{{ form.recordar }} <span>Recordarme</span></label>
+    <a href="{% url 'cuentas:restablecer' %}">¿Olvidaste tu contraseña?</a>
+  </div>
+  <input type="hidden" name="next" value="{{ next }}">
+  <button type="submit" class="boton grande">Ingresar</button>
+</form>
+<p class="ayuda">Acceso exclusivo para el personal autorizado. Toda consulta a información sensible queda registrada en la
+  bitácora de auditoría.</p>
+{% endblock %}

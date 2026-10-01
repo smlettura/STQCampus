@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Registrar atención{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>Registrar atención{% if borrador %} <span class="insignia ambar">BORRADOR</span>{% endif %}</h1>
+  <span class="contexto">Los campos con <span class="req">*</span> son obligatorios</span></div>
+
+{% if not e %}
+<div class="pantalla-form">
+  <div>
+    <section class="tarjeta">
+      <div class="paso"><span class="numero">1</span><div><h2>Estudiante</h2><p>A quién se atendió.</p></div></div>
+      <form method="get" class="barra-tabla" role="search">
+        <label class="filtro-texto">{% icono "buscar" 16 %}<input type="search" name="q" value="{{ q }}" placeholder="Nombre, apellido o RUT del estudiante" aria-label="Buscar estudiante" autofocus></label>
+        <button class="boton" type="submit">Buscar</button>
+      </form>
+      {% if resultados is not None %}
+      <ul class="resultados-busqueda">
+        {% for r in resultados %}<li><a href="?estudiante={{ r.pk }}"><span><strong>{{ r.nombres }} {{ r.apellidos }}</strong> <small>{{ r.rut|rut }} · {{ r.curso.nombre }}</small></span><span>Seleccionar →</span></a></li>
+        {% empty %}<li class="vacio" style="padding:12px 14px">No hay estudiantes activos que coincidan con «{{ q }}».</li>{% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+    <section class="tarjeta" aria-disabled="true" style="opacity:.55">
+      <div class="paso"><span class="numero">2</span><div><h2>Datos de la atención</h2><p>Cuándo, de qué tipo y con qué urgencia.</p></div></div>
+    </section>
+    <section class="tarjeta" aria-disabled="true" style="opacity:.55">
+      <div class="paso"><span class="numero">3</span><div><h2>Registro de la sesión</h2><p>Lo que se convertirá en el informe.</p></div></div>
+    </section>
+  </div>
+  <aside>
+    <div class="tarjeta panel-resumen">
+      <h2>Resumen</h2>
+      <dl><dt>Estudiante</dt><dd class="pendiente">Pendiente</dd><dt>Datos de la atención</dt><dd class="pendiente">Pendiente</dd>
+        <dt>Registro de la sesión</dt><dd class="pendiente">Pendiente</dd></dl>
+    </div>
+    {% if mis_casos %}
+    <div class="tarjeta" style="margin-top:12px">
+      <h2>Mis casos activos</h2>
+      <ul class="lista-simple">{% for c in mis_casos %}<li><a href="?estudiante={{ c.estudiante_id }}">{{ c.estudiante }} <small class="ayuda" style="margin:0">{{ c.estudiante.curso.nombre }}</small>{% icono "flecha" 16 %}</a></li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+  </aside>
+</div>
+{% else %}
+<form method="post" id="form-atencion" novalidate>
+{% csrf_token %}
+{% if form.non_field_errors %}<div class="aviso error" role="alert">{% for x in form.non_field_errors %}<div>{{ x }}</div>{% endfor %}</div>{% endif %}
+<div class="pantalla-form">
+  <div>
+    <section class="tarjeta">
+      <div class="paso"><span class="numero">1</span><div><h2>Estudiante</h2><p>A quién se atendió.</p></div></div>
+      <div class="tarjeta-estudiante">
+        <span class="avatar" aria-hidden="true">{{ e.iniciales }}</span>
+        <div class="quien-es"><strong>{{ e.nombres }} {{ e.apellidos }}</strong>
+          <span><span class="mono">{{ e.rut|rut }}</span> · {{ e.curso.nombre }}{% if e.nombre_social %} · nombre social: {{ e.nombre_social }}{% endif %}</span></div>
+        {% if en_pie %}<span class="insignia">PIE</span>{% endif %}
+        {% if en_seguimiento %}<span class="insignia gris">EN SEGUIMIENTO</span>{% else %}<span class="insignia verde">SE ABRIRÁ UN CASO</span>{% endif %}
+        {% if not borrador %}<a class="boton secundario" href="{% url 'casos:registrar_atencion' %}">Cambiar</a>{% endif %}
+      </div>
+      {% if form.caso %}<div class="grupo" style="margin:14px 0 0">{% include "comun/_campo.html" with campo=form.caso %}</div>
+      {% elif caso_actual %}<p class="ayuda">Se registrará en el caso <a href="{% url 'casos:detalle' caso_actual.pk %}">{{ caso_actual.get_tipo_proceso_display }}</a> (abierto el {{ caso_actual.fecha_apertura|date:"d/m/Y" }}).</p>
+      {% else %}<p class="ayuda">El estudiante no tiene un caso abierto: al registrar se abrirá uno de seguimiento psicosocial a su cargo.</p>{% endif %}
+    </section>
+
+    <section class="tarjeta">
+      <div class="paso"><span class="numero">2</span><div><h2>Datos de la atención</h2><p>Cuándo, de qué tipo y con qué urgencia.</p></div></div>
+      <div class="campos">
+        {% include "comun/_campo.html" with campo=form.fecha %}
+        {% include "comun/_campo.html" with campo=form.hora %}
+        {% include "comun/_campo.html" with campo=form.duracion_minutos %}
+      </div>
+      <div class="campos dos">
+        <div class="grupo{% if form.tipo_atencion.errors %} con-error{% endif %}"><span class="rotulo-grupo">Tipo de atención <span class="req">*</span></span>
+          <div class="opciones" role="radiogroup" aria-label="Tipo de atención">{% for r in form.tipo_atencion %}<label class="opcion" for="{{ r.id_for_label }}">{{ r.tag }} {{ r.choice_label }}</label>{% endfor %}</div>
+          {% for x in form.tipo_atencion.errors %}<p class="error-campo">{{ x }}</p>{% endfor %}</div>
+        <div class="grupo{% if form.urgencia.errors %} con-error{% endif %}"><span class="rotulo-grupo">Nivel de urgencia <span class="req">*</span></span>
+          <div class="opciones" role="radiogroup" aria-label="Nivel de urgencia">{% for r in form.urgencia %}<label class="opcion{% if r.data.value == 'alta' %} alta{% endif %}" for="{{ r.id_for_label }}">{{ r.tag }} {{ r.choice_label }}</label>{% endfor %}</div>
+          {% for x in form.urgencia.errors %}<p class="error-campo">{{ x }}</p>{% endfor %}</div>
+      </div>
+    </section>
+
+    <section class="tarjeta">
+      <div class="paso"><span class="numero">3</span><div><h2>Registro de la sesión</h2><p>Lo que se convertirá en el informe. Se guarda cifrado.</p></div></div>
+      <div class="campos dos">
+        {% include "comun/_campo.html" with campo=form.motivo %}
+        {% include "comun/_campo.html" with campo=form.derivado_por %}
+        {% include "comun/_campo.html" with campo=form.nota etiqueta="Descripción de la sesión" %}
+        {% include "comun/_campo.html" with campo=form.acuerdos %}
+      </div>
+      <div class="grupo grupo-casilla">{{ form.solo_autora }}<div><label for="{{ form.solo_autora.id_for_label }}">{{ form.solo_autora.label }}</label><small class="ayuda">{{ form.solo_autora.help_text }}</small></div></div>
+    </section>
+  </div>
+  <aside>
+    <div class="tarjeta panel-resumen" data-resumen-form="form-atencion">
+      <h2>Resumen</h2>
+      <dl>
+        <dt>Estudiante</dt><dd data-fijo>Seleccionado</dd>
+        <dt>Datos de la atención</dt><dd data-seccion data-campos="fecha duracion_minutos tipo_atencion urgencia">—</dd>
+        <dt>Registro de la sesión</dt><dd data-seccion data-campos="motivo nota">—</dd>
+      </dl>
+      <button type="submit" class="boton" name="accion" value="registrar">Registrar atención</button>
+      <button type="submit" class="boton secundario" name="accion" value="borrador">Guardar como borrador</button>
+    </div>
+    {% if borrador %}
+    <form method="post" action="{% url 'casos:descartar_borrador' borrador.pk %}" data-confirmar="¿Descartar este borrador?" style="margin-top:10px">{% csrf_token %}
+      <button class="boton contorno-rojo" type="submit">Descartar borrador</button></form>
+    {% endif %}
+    <div class="tarjeta" style="margin-top:12px">
+      <h2>Atenciones anteriores</h2>
+      <ul class="lista-simple">
+      {% for s in previas %}<li><span class="fecha">{{ s.fecha_hora|date:"d/m" }}</span>
+        {% if s.estado == "borrador" %}<a href="?borrador={{ s.pk }}">{{ s.titulo }} <span class="insignia ambar">borrador</span>{% icono "flecha" 16 %}</a>
+        {% else %}<a href="{% url 'casos:detalle' s.caso_id %}">{{ s.titulo }}{% icono "flecha" 16 %}</a>{% endif %}</li>
+      {% empty %}<li class="vacio">Es la primera atención registrada.</li>{% endfor %}
+      </ul>
+    </div>
+  </aside>
+</div>
+</form>
+{% endif %}
+{% endblock %}

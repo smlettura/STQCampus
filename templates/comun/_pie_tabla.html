@@ -1,0 +1,7 @@
+{% load ui %}<div class="pie-tabla">
+  <span>{% if pagina.paginator.count %}Mostrando <strong>{{ pagina.start_index }}–{{ pagina.end_index }}</strong> de <strong>{{ pagina.paginator.count|miles }}</strong>{% else %}Sin registros{% endif %}</span>
+  <nav class="acciones" aria-label="Paginación">
+    <a class="boton secundario chico{% if not pagina.has_previous %} deshabilitado{% endif %}" {% if pagina.has_previous %}href="{% url_con pagina=pagina.previous_page_number %}"{% else %}aria-disabled="true"{% endif %}>Anterior</a>
+    <a class="boton secundario chico{% if not pagina.has_next %} deshabilitado{% endif %}" {% if pagina.has_next %}href="{% url_con pagina=pagina.next_page_number %}"{% else %}aria-disabled="true"{% endif %}>Siguiente</a>
+  </nav>
+</div>

@@ -1,0 +1,15 @@
+# Plataforma de Bienestar Psicológico Estudiantil — dependencias (Python 3.11 o superior)
+Django>=5.2,<5.3
+djangorestframework>=3.15,<3.19
+cryptography>=42          # cifrado AES-256-GCM de campos sensibles y adjuntos
+pyotp>=2.9                # segundo factor TOTP
+qrcode>=7.4               # código QR (SVG) para configurar el segundo factor
+whitenoise>=6.6           # archivos estáticos en producción
+PyMySQL>=1.1              # conector MySQL en Python puro (funciona en Windows sin compilador)
+openpyxl>=3.1             # importación y descargas en Excel (estudiantes, situación conductual, plan de gestión)
+reportlab>=4.0            # PDF de fichas y nóminas de curso
+gunicorn>=22 ; sys_platform != "win32"
+
+# Opcional: conector MySQL nativo, más rápido. Requiere compilador y las cabeceras de MySQL.
+# Si está instalado se usa automáticamente; si no, se usa PyMySQL.
+# mysqlclient>=2.2

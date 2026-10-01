@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Protocolos{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>Protocolos activados</h1><span class="contexto">Año escolar {{ filtros.anio }}</span></div>
+<div class="kpis">
+  <div class="kpi"><span class="rotulo">Total registrados</span><span class="valor">{{ total }}</span><span class="detalle">{{ filtros.anio }}</span></div>
+  <a class="kpi" href="{% url_con estado='abierto' %}"><span class="rotulo">Abiertos</span><span class="valor">{{ abiertos }}</span><span class="detalle">en curso</span></a>
+  <a class="kpi" href="{% url_con estado='cerrado' %}"><span class="rotulo">Cerrados</span><span class="valor">{{ cerrados }}</span><span class="detalle">finalizados</span></a>
+  <div class="kpi"><span class="rotulo">Tasa de resolución</span><span class="valor">{{ tasa|pct }}</span><span class="detalle">{{ cerrados }} de {{ total }}</span></div>
+  <div class="kpi"><span class="rotulo" style="font-size:15px;color:var(--texto)">Por nivel</span>
+    <ul class="barras-color" style="gap:8px;margin-top:6px">{% for n in por_nivel %}<li style="grid-template-columns:70px minmax(0,1fr) 24px;gap:10px;font-size:13px"><span>{{ n.nombre }}</span><span class="pista" style="height:10px">{% if n.valor %}<span class="relleno naranjo" style="width:{{ n.ancho|stringformat:'s' }}%"></span>{% endif %}</span><span class="num">{{ n.valor }}</span></li>{% endfor %}</ul></div>
+</div>
+<div class="tarjeta">
+  <div class="cabecera-tarjeta"><h2>Protocolos activados</h2>
+    <nav class="pestanas"><a href="{% url_con estado='' %}" class="{% if not estado %}activo{% endif %}">Todos</a>
+      <a href="{% url_con estado='abierto' %}" class="{% if estado == 'abierto' %}activo{% endif %}">Abiertos</a>
+      <a href="{% url_con estado='cerrado' %}" class="{% if estado == 'cerrado' %}activo{% endif %}">Cerrados</a></nav></div>
+  <div class="tabla-scroll">
+  <table class="tabla v1">
+    <thead><tr><th>Protocolo</th><th>Fecha</th><th>Nivel</th><th>Curso</th><th>Responsable</th><th>Estado</th><th class="col-acciones"></th></tr></thead>
+    <tbody>
+    {% for p in pagina %}<tr>
+      <td data-rotulo="Protocolo" style="font-weight:600;max-width:360px">{{ p.get_protocolo_display }}{% if p.alerta_id %}<span class="sub-celda">desde alerta N° {{ p.alerta_id }}</span>{% endif %}</td>
+      <td class="nowrap" data-rotulo="Fecha">{{ p.fecha_activacion|date:"d/m/Y" }}</td>
+      <td data-rotulo="Nivel">{% if p.curso.grupo == "prebasica" %}Prebásica{% elif p.curso.grupo == "media" %}Media{% else %}Básica{% endif %}</td>
+      <td data-rotulo="Curso">{{ p.curso.nombre }}</td>
+      <td data-rotulo="Responsable">{{ p.responsable }}</td>
+      <td data-rotulo="Estado"><span class="estado {% if p.estado == 'abierto' %}ambar{% else %}gris{% endif %}">{{ p.get_estado_display }}</span></td>
+      <td class="col-acciones"><a class="boton-icono" href="{% url 'convivencia:protocolo' p.pk %}" aria-label="Ver protocolo" title="Ver protocolo">{% icono "ojo" 16 %}</a></td>
+    </tr>{% empty %}<tr><td colspan="7" class="vacio">No hay protocolos activados con estos filtros.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% include "comun/_pie_tabla.html" %}
+</div>
+{% endblock %}

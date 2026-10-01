@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Solicitudes ARCO+{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Solicitudes de derechos ARCO+</h1><p class="sub">Acceso, rectificación, supresión, oposición, portabilidad y bloqueo (RF-12). Se registran desde la ficha del estudiante.</p></div>
+  <div class="acciones"><a class="boton secundario" href="?pendientes={% if request.GET.pendientes == '0' %}1{% else %}0{% endif %}">{% if request.GET.pendientes == '0' %}Ver pendientes{% else %}Ver todas{% endif %}</a></div>
+</div>
+<div class="tarjeta tabla-scroll"><table class="tabla">
+  <thead><tr><th>Estudiante</th><th>Apoderado</th><th>Derecho</th><th>Recepción</th><th>Plazo</th><th>Estado</th></tr></thead><tbody>
+  {% for s in solicitudes %}<tr>
+    <td data-rotulo="Estudiante"><a href="{% url 'cumplimiento:arco_detalle' s.pk %}">{{ s.estudiante|default:"(expediente eliminado)" }}</a></td>
+    <td data-rotulo="Apoderado">{{ s.apoderado }}</td><td data-rotulo="Derecho">{{ s.get_tipo_derecho_display }}</td>
+    <td data-rotulo="Recepción">{{ s.fecha_recepcion|date:"d-m-Y" }}</td>
+    <td data-rotulo="Plazo">{{ s.fecha_limite|date:"d-m-Y" }}{% if s.vencida %} <span class="insignia rojo">vencida</span>{% endif %}</td>
+    <td data-rotulo="Estado"><span class="insignia {{ s.estado|color_estado }}">{{ s.get_estado_display }}</span></td></tr>
+  {% empty %}<tr><td colspan="6" class="vacio">No hay solicitudes.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

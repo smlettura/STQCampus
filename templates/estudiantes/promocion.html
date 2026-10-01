@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Promoción{% endblock %}
+{% block contenido %}
+{% include "estudiantes/_pasos_promocion.html" %}
+<div class="pantalla-form">
+  <div>
+    <form class="tarjeta" method="post">
+      {% csrf_token %}
+      <div class="cabecera-tarjeta"><h2>¿Qué cursos egresan en {{ proceso.anio }}?</h2>
+        <span class="total">Año escolar <strong>{{ proceso.anio }}</strong></span></div>
+      {% if cursos %}
+      <fieldset class="deshabilitado" {% if proceso.procesado %}disabled{% endif %}>
+        <legend class="oculto-accesible">Cursos terminales</legend>
+        <div class="casillas-cursos">
+        {% for c in cursos %}
+          <label class="opcion"><input type="checkbox" name="terminales" value="{{ c.pk }}" {% if c.pk in elegidos %}checked{% endif %}> {{ c.nombre }}
+            {% if c.pk in elegidos %}<span class="insignia">EGRESA</span>{% endif %}</label>
+        {% endfor %}
+        </div>
+      </fieldset>
+      {% if not proceso.procesado %}
+      <div class="pie-form" style="justify-content:flex-end">
+        <button class="boton secundario" type="submit" name="accion" value="borrador">Guardar borrador</button>
+        <button class="boton" type="submit" name="accion" value="continuar">Guardar y continuar</button>
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="estado-vacio"><h2>No hay cursos en {{ proceso.anio }}</h2><p>Cree los cursos del año antes de configurar la promoción.</p></div>
+      {% endif %}
+    </form>
+  </div>
+  <aside>
+    <div class="nota-info">{% icono "info" 18 %}
+      <div><strong>¿Qué es un curso terminal?</strong>
+        <p>Es el último curso que ofrece el colegio. Sus estudiantes egresan al terminar el año escolar.</p>
+        <p>Colegios completos: <strong>4° Medio</strong>. Colegios sin enseñanza media: <strong>8° Básico</strong>.</p></div></div>
+  </aside>
+</div>
+{% endblock %}

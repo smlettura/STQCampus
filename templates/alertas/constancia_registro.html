@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block titulo %}Constancia de registro{% endblock %}
+{% block contenido %}
+<h1>Constancia de registro de alerta</h1>
+<div class="tarjeta">
+  <dl class="datos">
+    <dt>N° de alerta</dt><dd>{{ alerta.pk }}</dd>
+    <dt>Tipo de situación</dt><dd>{{ alerta.get_tipo_situacion_display }}{% if alerta.subtipo_violencia %} — {{ alerta.get_subtipo_violencia_display }}{% endif %}</dd>
+    <dt>Sede</dt><dd>{{ alerta.sede }}</dd>
+    <dt>Conocimiento de los hechos</dt><dd>{{ alerta.fecha_hora_conocimiento|date:"d-m-Y H:i" }}</dd>
+    <dt>Registro (sellado por el servidor)</dt><dd>{{ alerta.fecha_hora_registro|date:"d-m-Y H:i:s" }}</dd>
+    <dt>Notificado a</dt><dd>{{ roles|join:", "|default:"Directora" }} ({{ personas }} persona{{ personas|pluralize }}, en la plataforma y por correo)</dd>
+  </dl>
+  <h2 style="margin-top:1rem">Huellas de las notificaciones</h2>
+  {% for n in notificaciones %}<p class="mono">{{ n.fecha_hora_envio|date:"d-m-Y H:i:s" }} · {{ n.get_canal_display }} · {{ n.hash_constancia }}</p>{% endfor %}
+  <p class="ayuda">Cada huella SHA-256 queda además en la bitácora encadenada; cualquier alteración posterior es detectable (RF-14).</p>
+  <div class="pie-form"><a class="boton" href="{% url 'core:inicio' %}">Volver al inicio</a>
+    <button class="boton secundario" type="button" data-imprimir>Imprimir constancia</button></div>
+</div>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Caso {{ caso.pk }}{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina">
+  <div>
+    <h1>{% if estudiante_visible %}<a href="{% url 'estudiantes:detalle' caso.estudiante_id %}">{{ caso.estudiante }}</a>{% else %}{{ caso.estudiante }}{% endif %}</h1>
+    <p class="sub">{{ caso.get_tipo_proceso_display }}{% if caso.tipo_atencion %} · {{ caso.tipo_atencion }}{% endif %} ·
+      responsable {{ caso.responsable }} · abierto el {{ caso.fecha_apertura|date:"d-m-Y" }}
+      <span class="insignia {{ caso.estado|color_estado }}">{{ caso.get_estado_display }}</span>
+      {% if caso.fecha_fin_retencion %}<small class="ayuda">Se conserva hasta el {{ caso.fecha_fin_retencion|date:"d-m-Y" }} (RNF-10).</small>{% endif %}</p>
+  </div>
+  <div class="acciones">
+    {% if gestiona %}
+      <a class="boton" href="{% url 'casos:registrar_atencion' %}?estudiante={{ caso.estudiante_id }}&amp;caso={{ caso.pk }}">Registrar atención</a>
+      <a class="boton secundario" href="{% url 'casos:hito' caso.pk %}">Agregar hito</a>
+      <a class="boton secundario" href="{% url 'casos:documento' caso.pk %}">Adjuntar documento</a>
+    {% endif %}
+    {% if "ia.usar" in permisos and ve_notas %}<a class="boton secundario" href="{% url 'ia:generar_informe' %}?estudiante={{ caso.estudiante_id }}">Generar informe (IA)</a>{% endif %}
+    {% if gestiona %}<a class="boton secundario" href="{% url 'casos:cerrar' caso.pk %}">Cerrar caso</a>{% endif %}
+    {% if caso.cerrado and "caso.gestionar" in permisos %}<form class="enlinea" method="post" action="{% url 'casos:reabrir' caso.pk %}" data-confirmar="¿Reabrir el caso?">{% csrf_token %}<button class="boton secundario" type="submit">Reabrir</button></form>{% endif %}
+  </div>
+</div>
+
+<div class="rejilla-2">
+  <div class="tarjeta">
+    <h2>Línea de tiempo</h2>
+    {% if not ve_notas %}<div class="aviso info">Las notas de sesión son exclusivas del equipo psicosocial; aquí se muestran los hitos compartidos, documentos y evaluaciones.</div>{% endif %}
+    <ul class="linea">
+    {% for i in linea %}
+      <li class="{{ i.tipo }}">
+        <div class="cuando">{% if i.con_hora %}{{ i.fecha|date:"d-m-Y H:i" }}{% else %}{{ i.fecha|date:"d-m-Y" }}{% endif %} · <strong>{{ i.etiqueta }}</strong>
+          {% if i.autor %}· {{ i.autor }}{% endif %}
+          {% if i.privada %}<span class="insignia ambar">solo la autora</span>{% endif %}
+          {% if i.borrador %}<span class="insignia ambar">borrador</span> <a href="{% url 'casos:registrar_atencion' %}?borrador={{ i.id }}">continuar</a>{% endif %}
+          {% if i.urgente %}<span class="insignia rojo">urgencia alta</span>{% endif %}
+          {% if i.visible_pj %}<span class="insignia verde">visible para el profesor jefe</span>{% endif %}</div>
+        {% if i.tipo == "documento" %}<div class="texto"><a href="{% url 'casos:descargar' i.id %}">{{ i.texto }}</a></div>
+        {% elif i.tipo == "evaluacion" %}<div class="texto"><a href="{% url 'evaluacion:detalle' i.id %}">{{ i.texto }}</a></div>
+        {% else %}{% if i.detalle %}<div class="cuando">{{ i.detalle }}</div>{% endif %}<div class="texto">{{ i.texto }}</div>{% endif %}
+      </li>
+    {% empty %}<p class="vacio">Aún no hay registros en el caso.</p>{% endfor %}
+    </ul>
+  </div>
+
+  <div>
+    {% if caso.tipo_proceso != "seguimiento" %}
+    <div class="tarjeta">
+      <h2>Evaluación diagnóstica</h2>
+      {% for ev in evaluaciones %}<p><a href="{% url 'evaluacion:detalle' ev.pk %}">{{ ev.get_tipo_evaluacion_display }} · {{ ev.fecha_evaluacion|date:"d-m-Y" }}</a>
+        <span class="insignia {{ ev.estado|color_estado }}">{{ ev.get_estado_display }}</span>
+        {% if ev.fecha_reevaluacion %}<br><small class="ayuda">Reevaluación: {{ ev.fecha_reevaluacion|date:"d-m-Y" }}</small>{% endif %}</p>
+      {% empty %}<p class="vacio">Sin evaluaciones.</p>{% endfor %}
+      {% if "evaluacion.gestionar" in permisos and not caso.cerrado %}<a class="boton secundario chico" href="{% url 'evaluacion:nueva' caso.pk %}">Registrar evaluación</a>{% endif %}
+    </div>
+    {% endif %}
+
+    {% if "informe.gestionar" in permisos %}
+    <div class="tarjeta">
+      <h2>Informes</h2>
+      {% for inf in informes %}<p><a href="{% url 'evaluacion:informe' inf.pk %}">{{ inf.get_tipo_display }}</a>
+        <span class="insignia {{ inf.estado|color_estado }}">{{ inf.get_estado_display }}</span>
+</p>
+      {% empty %}<p class="vacio">Sin informes.</p>{% endfor %}
+      {% if not caso.cerrado %}<a class="boton secundario chico" href="{% url 'evaluacion:informe_nuevo' caso.pk %}">Nuevo informe</a>{% endif %}
+    </div>
+    {% endif %}
+
+    <div class="tarjeta">
+      <h2>Documentos</h2>
+      {% for d in documentos %}<p><a href="{% url 'casos:descargar' d.pk %}">{{ d.nombre_archivo }}</a><br>
+        <small class="ayuda">{{ d.get_tipo_display }} · {{ d.fecha_carga|date:"d-m-Y" }} · cifrado · SHA-256 {{ d.hash_sha256|truncatechars:14 }}</small></p>
+      {% empty %}<p class="vacio">Sin documentos.</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

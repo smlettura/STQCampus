@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}{{ curso.nombre }}{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina">
+  <div><h1>{{ curso.nombre }}</h1><p class="sub">Año escolar {{ curso.anio_escolar }} · Sede {{ curso.sede }} · Profesor jefe: {{ curso.profesor_jefe|default:"sin asignar" }}</p></div>
+  <div class="acciones">
+    <a class="boton secundario" href="{% url 'estudiantes:curso_pdf' curso.pk %}">{% icono "descargar" 16 %} Nómina PDF</a>
+    {% if "curso.gestionar" in permisos %}<a class="boton secundario" href="{% url 'estudiantes:curso_editar' curso.pk %}">Editar curso</a>{% endif %}
+  </div>
+</div>
+<div class="kpis">
+  <div class="kpi"><span class="rotulo">Estudiantes</span><span class="valor">{{ estudiantes|length }}</span><span class="detalle">{{ activos }} activos</span></div>
+  <div class="kpi"><span class="rotulo">PIE</span><span class="valor">{{ pie }}</span><span class="detalle">en el programa</span></div>
+  <div class="kpi"><span class="rotulo">Prioritarios</span><span class="valor">{{ prioritarios }}</span><span class="detalle">SEP</span></div>
+</div>
+<div class="tarjeta">
+  <table class="tabla v1">
+    <thead><tr><th>N°</th><th>Estudiante</th><th>RUT</th><th>Programa</th><th>Estado</th><th class="col-acciones"></th></tr></thead>
+    <tbody>
+    {% for e in estudiantes %}<tr>
+      <td class="num-fila">{{ forloop.counter|stringformat:"02d" }}</td>
+      <td data-rotulo="Estudiante">{{ e.nombre_lista }}{% if e.nombre_social %}<span class="sub-celda">Nombre social: {{ e.nombre_social }}</span>{% endif %}</td>
+      <td data-rotulo="RUT" class="nowrap">{{ e.rut|rut }}</td>
+      <td data-rotulo="Programa">{% if e.en_pie %}<span class="insignia">PIE</span>{% endif %}{% if e.prioritario %} <span class="insignia ambar">PRIORITARIO</span>{% endif %}{% if not e.en_pie and not e.prioritario %}—{% endif %}</td>
+      <td data-rotulo="Estado"><span class="estado {{ e.estado|color_estado }}">{{ e.get_estado_display }}</span></td>
+      <td class="col-acciones">{% if "estudiante.ver_todos" in permisos %}<a class="boton contorno" href="{% url 'estudiantes:detalle' e.pk %}">Ver ficha</a>{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="6" class="vacio">El curso no tiene estudiantes.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

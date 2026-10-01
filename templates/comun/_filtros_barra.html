@@ -1,0 +1,4 @@
+{% load ui %}{% for m in filtros_barra %}<details class="filtro-barra">
+  <summary>{{ m.etiqueta }}{% icono "chevron" 14 %}</summary>
+  <div class="menu-flotante" role="menu">{% for o in m.opciones %}<a role="menuitem" href="{{ o.url }}"{% if o.activo %} class="activo" aria-current="true"{% endif %}>{{ o.texto }}</a>{% endfor %}</div>
+</details>{% endfor %}

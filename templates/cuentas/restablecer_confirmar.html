@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titulo %}Nueva contraseña{% endblock %}
+{% block acceso %}
+{% if validlink %}
+<h1>Nueva contraseña</h1>
+<form method="post" class="form-acceso">
+  {% csrf_token %}
+  {% include "comun/_campos.html" %}
+  <button type="submit" class="boton grande">Guardar contraseña</button>
+</form>
+{% else %}
+<h1>Enlace no válido</h1>
+<p>El enlace ya se usó o venció. Solicite uno nuevo.</p>
+<a class="boton grande" href="{% url 'cuentas:restablecer' %}">Solicitar un enlace nuevo</a>
+{% endif %}
+{% endblock %}

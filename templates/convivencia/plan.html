@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Plan de gestión{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>Plan de gestión de convivencia escolar</h1><span class="contexto">Año escolar {{ filtros.anio }}{% if filtros.mes %} · {{ filtros.nombre_mes }}{% endif %}</span></div>
+<div class="tarjeta">
+  <div class="cabecera-tarjeta"><h2>Actividades</h2>
+    <div class="acciones">
+      <nav class="pestanas"><a href="{% url_con estado='' %}" class="{% if not estado %}activo{% endif %}">Todas <span class="n">{{ conteo.todas }}</span></a>
+        <a href="{% url_con estado='realizada' %}" class="{% if estado == 'realizada' %}activo{% endif %}">Realizadas <span class="n">{{ conteo.realizada }}</span></a>
+        <a href="{% url_con estado='pendiente' %}" class="{% if estado == 'pendiente' %}activo{% endif %}">Pendientes <span class="n">{{ conteo.pendiente }}</span></a></nav>
+      <a class="boton secundario" href="{% url 'convivencia:plan_descargar' %}{{ filtros.url }}">{% icono "descargar" 16 %} Descargar registros</a>
+    </div></div>
+  <div class="tabla-scroll">
+  <table class="tabla v1">
+    <thead><tr><th>Tipo</th><th>Título</th><th>Fecha</th><th>Responsable</th><th>Medio de verificación</th><th>Estado</th><th class="col-acciones"></th></tr></thead>
+    <tbody>
+    {% for a in pagina %}<tr>
+      <td data-rotulo="Tipo"><span class="insignia tipo">{{ a.get_tipo_display }}</span></td>
+      <td data-rotulo="Título" style="font-weight:600">{{ a.titulo }}</td>
+      <td class="nowrap" data-rotulo="Fecha">{{ a.fecha|date:"d/m/Y" }}</td>
+      <td data-rotulo="Responsable">{{ a.responsable }}</td>
+      <td data-rotulo="Medio de verificación">{{ a.medio_verificacion|default:"—" }}</td>
+      <td data-rotulo="Estado"><span class="estado {{ a.estado|color_estado }}">{{ a.get_estado_display }}</span></td>
+      <td class="col-acciones"><div class="acciones-fila">
+        <a class="boton-icono" href="{% url 'convivencia:actividad' a.pk %}" aria-label="Ver evidencias ({{ a.n_evidencias }})" title="Evidencias ({{ a.n_evidencias }})">{% icono "carpeta" 16 %}</a>
+        {% if "plan_convivencia.gestionar" in permisos %}
+        <details class="menu-fila"><summary class="boton-icono sin-borde" aria-label="Más acciones">{% icono "puntos" 18 %}</summary>
+          <div class="menu-flotante"><a href="{% url 'convivencia:actividad_editar' a.pk %}">Editar actividad</a><a href="{% url 'convivencia:actividad' a.pk %}">Adjuntar evidencia</a></div></details>
+        {% endif %}</div></td>
+    </tr>{% empty %}<tr><td colspan="7" class="vacio">No hay actividades con estos filtros.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% include "comun/_pie_tabla.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Conflictos{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>Gestión de conflictos</h1><span class="contexto">Año escolar {{ filtros.anio }}{% if filtros.mes %} · {{ filtros.nombre_mes }}{% endif %}</span></div>
+<div class="kpis">
+  <div class="kpi"><span class="rotulo">Total registrados</span><span class="valor">{{ total|miles }}</span><span class="detalle">{{ filtros.anio }}</span></div>
+  <div class="kpi"><span class="rotulo">Básica</span><span class="valor">{{ por_tramo.basica|miles }}</span><span class="detalle">1° a 6° Básico</span></div>
+  <div class="kpi"><span class="rotulo">Media</span><span class="valor">{{ por_tramo.media|miles }}</span><span class="detalle">7° Básico a 4° Medio</span></div>
+  <div class="kpi ancho"><span class="rotulo" style="font-size:15px;color:var(--texto)">Distribución por nivel</span>
+    <div class="distribucion" role="img" aria-label="Básica {{ por_tramo.basica }}, Media {{ por_tramo.media }}"><span class="relleno azul" style="width:{{ pct_basica|stringformat:'s' }}%"></span><span class="relleno naranjo" style="flex:1"></span></div>
+    <div class="leyenda separada"><span><span class="punto-leyenda azul"></span>Básica (1°–6°)<strong>{{ por_tramo.basica }}</strong></span><span><span class="punto-leyenda naranjo"></span>Media (7°–4°)<strong>{{ por_tramo.media }}</strong></span></div></div>
+</div>
+<div class="tarjeta">
+  <div class="cabecera-tarjeta"><h2>Registros</h2>
+    <nav class="pestanas"><a href="{% url_con tipo='' %}" class="{% if not tipo %}activo{% endif %}">Todos</a>
+      <a href="{% url_con tipo='mediacion' %}" class="{% if tipo == 'mediacion' %}activo{% endif %}">Mediación</a>
+      <a href="{% url_con tipo='otros' %}" class="{% if tipo == 'otros' %}activo{% endif %}">Otros</a></nav></div>
+  <div class="tabla-scroll">
+  <table class="tabla v1">
+    <thead><tr><th>Fecha</th><th>Tipo de gestión</th><th>Curso</th><th>Participantes</th><th>Encargada</th><th>Resultado</th><th class="col-acciones"></th></tr></thead>
+    <tbody>
+    {% for c in pagina %}<tr>
+      <td class="nowrap" data-rotulo="Fecha">{{ c.fecha|date:"d/m/Y" }}</td>
+      <td data-rotulo="Tipo"><span class="insignia tipo">{{ c.get_tipo_gestion_display }}</span></td>
+      <td data-rotulo="Curso">{{ c.curso.nombre }}</td>
+      <td data-rotulo="Participantes">{{ c.n }} estudiante{{ c.n|pluralize }}</td>
+      <td data-rotulo="Encargada">{{ c.encargada }}</td>
+      <td data-rotulo="Resultado"><span class="estado {% if c.resultado == 'con_acuerdo' %}verde{% elif c.resultado == 'en_proceso' %}ambar{% else %}gris{% endif %}">{{ c.get_resultado_display }}</span></td>
+      <td class="col-acciones"><a class="boton-icono" href="{% url 'convivencia:conflicto' c.pk %}" aria-label="Ver registro" title="Ver registro">{% icono "ojo" 16 %}</a></td>
+    </tr>{% empty %}<tr><td colspan="7" class="vacio">No hay conflictos registrados con estos filtros.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% include "comun/_pie_tabla.html" %}
+</div>
+{% endblock %}

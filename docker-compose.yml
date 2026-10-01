@@ -1,0 +1,60 @@
+# Entorno local completo: MySQL 8 + aplicación + buzón de correo de prueba.
+#   docker compose up --build
+#   Plataforma: http://localhost:8000     Correos de prueba: http://localhost:8025
+# Datos de demostración ficticios (contraseña Bienestar2026). Solo para uso local.
+services:
+  db:
+    image: mysql:8.0
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    environment:
+      MYSQL_ROOT_PASSWORD: Cambiar_Root_2026
+    volumes:
+      - datos_mysql:/var/lib/mysql
+      - ./sql/00_crear_bd_y_usuarios.sql:/docker-entrypoint-initdb.d/00_crear_bd_y_usuarios.sql:ro
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pCambiar_Root_2026"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  correo:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+
+  web:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_DEBUG: "0"
+      HTTPS_OBLIGATORIO: "0"                 # solo local; en Azure el tráfico es HTTPS
+      DJANGO_SECRET_KEY: cambiar-esta-clave-local-por-una-generada-con-secrets-token-urlsafe
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      # Genere su propia clave: python manage.py generar_clave_cifrado --id v1
+      CIFRADO_CLAVES: v1:MdBpVS55Lif9E1KY6IWyp2eei62TLEgBlll7VmTXtdc=
+      DB_ENGINE: mysql
+      DB_HOST: db
+      DB_NAME: bienestar
+      DB_USER: bienestar_app
+      DB_PASSWORD: Cambiar_App_2026
+      DB_MIGRA_USER: bienestar_migra
+      DB_MIGRA_PASSWORD: Cambiar_Migra_2026
+      EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
+      EMAIL_HOST: correo
+      EMAIL_PORT: "1025"
+      EMAIL_USE_TLS: "0"
+      URL_PLATAFORMA: http://localhost:8000
+      TAREAS_TOKEN: token-local-de-pruebas
+      CARGAR_DATOS_DEMO: "1"
+    volumes:
+      - almacenamiento:/app/almacenamiento
+
+volumes:
+  datos_mysql:
+  almacenamiento:

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Alerta {{ alerta.pk }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Alerta N° {{ alerta.pk }} · {{ alerta.get_tipo_situacion_display }}</h1>
+    <p class="sub">{{ alerta.estudiante }} · {{ alerta.estudiante.curso }} · sede {{ alerta.sede }}
+      <span class="insignia {{ alerta.estado|color_estado }}">{{ alerta.get_estado_display }}</span>
+      {% if alerta.posible_delito %}<span class="insignia rojo">podría constituir delito</span>{% endif %}</p></div>
+  <div class="acciones">
+    {% if puede_denunciar %}<a class="boton peligro" href="{% url 'alertas:denunciar' alerta.pk %}">Registrar denuncia</a>{% endif %}
+    {% if alerta.caso_id and "caso.ver_equipo" in permisos %}<a class="boton secundario" href="{% url 'casos:detalle' alerta.caso_id %}">Ver caso</a>{% endif %}
+  </div>
+</div>
+
+{% if alerta.posible_delito and not denuncia %}
+  {% if alerta.plazo_denuncia < ahora %}<div class="aviso error">El plazo legal de 24 horas para denunciar venció el {{ alerta.plazo_denuncia|date:"d-m-Y H:i" }}.</div>
+  {% else %}<div class="aviso advertencia">Plazo para denunciar: hasta el {{ alerta.plazo_denuncia|date:"d-m-Y H:i" }} (24 horas desde el conocimiento).</div>{% endif %}
+{% endif %}
+
+<div class="rejilla-2">
+  <div>
+    <div class="tarjeta">
+      <h2>Reporte</h2>
+      <dl class="datos">
+        {% if alerta.subtipo_violencia %}<dt>Subtipo</dt><dd>{{ alerta.get_subtipo_violencia_display }}</dd>{% endif %}
+        <dt>Reportó</dt><dd>{{ alerta.informante }}</dd>
+        <dt>Conocimiento</dt><dd>{{ alerta.fecha_hora_conocimiento|date:"d-m-Y H:i" }}</dd>
+        <dt>Registro</dt><dd>{{ alerta.fecha_hora_registro|date:"d-m-Y H:i:s" }}</dd>
+      </dl>
+      <h3 style="margin-top:1rem">Descripción</h3>
+      <p>{{ alerta.descripcion|linebreaksbr }}</p>
+      {% if es_informante and not ve_gestion %}<p class="ayuda">Como informante usted ve el estado de la alerta; la gestión la realiza el responsable designado.</p>{% endif %}
+    </div>
+
+    {% if ve_gestion %}
+    <div class="tarjeta">
+      <h2>Gestión y protocolo</h2>
+      <ul class="linea">
+        {% for g in gestiones %}<li class="hito"><div class="cuando">{{ g.fecha_hora|date:"d-m-Y H:i" }} · <strong>{{ g.get_accion_display }}</strong> · {{ g.responsable }}</div>
+          <div class="texto">{{ g.detalle }}</div></li>
+        {% empty %}<p class="vacio">Aún no se registran gestiones.</p>{% endfor %}
+      </ul>
+      {% if gestiona %}
+      <form method="post" action="{% url 'alertas:gestionar' alerta.pk %}" class="formulario">{% csrf_token %}
+        {% with form=form_gestion %}{% include "comun/_campos.html" %}{% endwith %}
+        <button class="boton" type="submit">Registrar gestión</button></form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    {% if denuncia %}
+    <div class="tarjeta">
+      <h2>Denuncia</h2>
+      <dl class="datos"><dt>Institución</dt><dd>{{ denuncia.get_institucion_display }}</dd>
+        <dt>Presentada</dt><dd>{{ denuncia.fecha_hora_presentacion|date:"d-m-Y H:i" }}
+          {% if denuncia.dentro_de_plazo %}<span class="insignia verde">dentro de plazo</span>{% else %}<span class="insignia rojo">fuera de plazo</span>{% endif %}</dd>
+        <dt>Por</dt><dd>{{ denuncia.psicologa }}</dd>
+        {% if denuncia.numero_parte %}<dt>N° de parte</dt><dd>{{ denuncia.numero_parte }}</dd>{% endif %}
+        <dt>Directora informada</dt><dd>{{ denuncia.directora_informada_en|date:"d-m-Y H:i" }}</dd>
+        <dt>Constancia</dt><dd class="mono">{{ denuncia.hash_constancia }}
+          {% if denuncia.constancia_integra %}<span class="insignia verde">íntegra</span>{% else %}<span class="insignia rojo">alterada</span>{% endif %}</dd></dl>
+    </div>
+    {% endif %}
+    {% if ve_gestion %}
+    <div class="tarjeta">
+      <h2>Notificaciones (RF-14)</h2>
+      {% for n in notificaciones %}<p>{{ n.destinatario }} · {{ n.get_canal_display }}<br>
+        <small class="ayuda">enviada {{ n.fecha_hora_envio|date:"d-m-Y H:i:s" }} · {% if n.fecha_hora_lectura %}leída {{ n.fecha_hora_lectura|date:"d-m-Y H:i" }}{% else %}no leída{% endif %}</small><br>
+        <span class="mono">{{ n.hash_constancia }}</span> {% if n.constancia_integra %}<span class="insignia verde">íntegra</span>{% else %}<span class="insignia rojo">alterada</span>{% endif %}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if form_caso %}
+    <div class="tarjeta">
+      <h2>Vincular a un caso</h2>
+      <form method="post" action="{% url 'alertas:vincular_caso' alerta.pk %}">{% csrf_token %}
+        {% with form=form_caso %}{% include "comun/_campos.html" %}{% endwith %}
+        <button class="boton secundario" type="submit">Vincular</button></form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

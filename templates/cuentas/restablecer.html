@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block titulo %}Restablecer contraseña{% endblock %}
+{% block acceso %}
+<h1>Restablecer contraseña</h1>
+<p class="sub">Ingrese su correo. Si pertenece a una cuenta activa, le enviaremos un enlace válido por una hora.</p>
+<form method="post" class="form-acceso">
+  {% csrf_token %}
+  {% include "comun/_campos.html" %}
+  <button type="submit" class="boton grande">Enviar enlace</button>
+</form>
+<p class="ayuda"><a href="{% url 'cuentas:login' %}">← Volver a iniciar sesión</a></p>
+{% endblock %}

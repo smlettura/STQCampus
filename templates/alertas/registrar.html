@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block titulo %}Registrar alerta de riesgo{% endblock %}
+{% block contenido %}
+<h1>Registrar alerta de riesgo</h1>
+<p class="sub">Flujo diferenciado y de acceso restringido (RF-13). La plataforma sella la fecha y hora y notifica de inmediato a
+  quien el reglamento interno designa según el tipo de situación y la sede.</p>
+<div class="aviso advertencia">Si un estudiante está en peligro inminente, actúe primero según el protocolo y llame a los servicios
+  de emergencia. Este registro no reemplaza la comunicación directa con el responsable.</div>
+<div class="rejilla-2">
+  <div class="tarjeta formulario">
+    <form method="post">{% csrf_token %}
+      {% include "comun/_campos.html" %}
+      <div class="pie-form"><button class="boton peligro" type="submit">Registrar y notificar</button>
+        <a class="boton secundario" href="{% url 'core:inicio' %}">Cancelar</a></div>
+    </form>
+  </div>
+  <div class="tarjeta">
+    <h2>¿A quién se notifica?</h2>
+    <p class="ayuda">Según la tabla del reglamento interno:</p>
+    <ul>
+      <li><strong>Vulneración de derechos:</strong> equipo psicosocial (psicóloga o asistente social).</li>
+      <li><strong>Abuso o hechos de connotación sexual:</strong> Encargada de Convivencia.</li>
+      <li><strong>Alcohol, drogas y armas:</strong> Directora.</li>
+      <li><strong>Riesgo de conducta suicida:</strong> psicólogas.</li>
+      <li><strong>Violencia o maltrato:</strong> entre adultos, Directora; con estudiantes, inspectora (Sede Básica) o
+        Encargada de Convivencia (Central y Prebásica).</li>
+    </ul>
+    <p class="ayuda">Si los hechos podrían constituir delito, la psicóloga designada presenta la denuncia dentro de 24 horas.</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}{{ a.titulo }}{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina">
+  <div><h1>{{ a.titulo }}</h1><p class="sub">{{ a.get_tipo_display }} · {{ a.fecha|date:"d/m/Y" }} · responsable {{ a.responsable }}
+    <span class="estado {{ a.estado|color_estado }}">{{ a.get_estado_display }}</span></p></div>
+  <div class="acciones">{% if gestiona %}<a class="boton secundario" href="{% url 'convivencia:actividad_editar' a.pk %}">Editar</a>{% endif %}
+    <a class="boton secundario" href="{% url 'convivencia:plan' %}">Volver</a></div>
+</div>
+<div class="rejilla-2">
+  <div class="tarjeta">
+    <h2>Detalle</h2>
+    <dl class="datos"><dt>Medio de verificación</dt><dd>{{ a.medio_verificacion|default:"—" }}</dd>
+      <dt>Descripción</dt><dd style="white-space:pre-line">{{ a.descripcion|default:"—" }}</dd></dl>
+  </div>
+  <div class="tarjeta">
+    <h2>Evidencias</h2>
+    <ul class="lista-simple">{% for ev in evidencias %}<li>{% icono "carpeta" 16 %}<a href="{% url 'convivencia:evidencia' ev.pk %}">{{ ev.nombre_archivo }} <small class="ayuda" style="margin:0">{{ ev.fecha_carga|date:"d/m/Y" }} · {{ ev.subida_por }}</small></a></li>
+      {% empty %}<li class="vacio">Sin evidencias adjuntas.</li>{% endfor %}</ul>
+    {% if form %}
+    <form method="post" enctype="multipart/form-data" style="margin-top:12px">{% csrf_token %}
+      {% include "comun/_campos.html" %}
+      <button class="boton secundario" type="submit">{% icono "subir" 16 %} Adjuntar evidencia</button>
+      <small class="ayuda">Se guarda cifrada, con su huella SHA-256 para verificar que no fue alterada.</small>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
