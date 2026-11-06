@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Procesar fin de año{% endblock %}
+{% block contenido %}
+{% include "estudiantes/_pasos_promocion.html" %}
+<div class="kpis">
+  <div class="kpi"><span class="rotulo">Promovidos</span><span class="valor">{{ totales|clave:"promovido"|default:0 }}</span><span class="detalle">pasan de curso</span></div>
+  <div class="kpi"><span class="rotulo">Repitentes</span><span class="valor">{{ totales|clave:"repite"|default:0 }}</span><span class="detalle">mismo nivel en {{ siguiente }}</span></div>
+  <div class="kpi"><span class="rotulo">Egresan</span><span class="valor">{{ totales|clave:"egresa"|default:0 }}</span><span class="detalle">de los cursos terminales</span></div>
+</div>
+<div class="pantalla-form">
+  <div class="tarjeta">
+    <h2>Movimientos hacia {{ siguiente }}</h2>
+    <table class="tabla v1"><thead><tr><th>Curso {{ proceso.anio }}</th><th>Destino {{ siguiente }}</th><th class="num">Promovidos</th><th class="num">Repiten</th><th class="num">Egresan</th></tr></thead><tbody>
+    {% for f in filas %}<tr><td data-rotulo="Curso">{{ f.origen.nombre }}</td>
+      <td data-rotulo="Destino">{% if f.destino %}{{ f.destino }} {{ f.origen.letra }}{% else %}<span class="insignia">EGRESA</span>{% endif %}</td>
+      <td class="num" data-rotulo="Promovidos">{{ f.promovidos }}</td><td class="num" data-rotulo="Repiten">{{ f.repiten }}</td><td class="num" data-rotulo="Egresan">{{ f.egresan }}</td></tr>
+    {% empty %}<tr><td colspan="5" class="vacio">Sin estudiantes revisados.</td></tr>{% endfor %}
+    </tbody></table>
+    <p class="ayuda">Los cursos de {{ siguiente }} que no existan se crearán en la misma sede y con la misma letra; luego podrá asignarles profesor jefe.</p>
+  </div>
+  <aside>
+    <div class="tarjeta panel-resumen">
+      <h2>Procesar</h2>
+      {% if proceso.procesado %}
+        <p class="ayuda" style="margin-top:0">Procesado el {{ proceso.fecha_proceso|date:"d/m/Y H:i" }}.</p>
+        <a class="boton" href="{% url 'estudiantes:egresados' %}?anio={{ proceso.anio }}">Ver egresados</a>
+      {% elif not habilitado %}
+        <div class="aviso advertencia">El procesamiento se habilita desde el {{ fecha_habilita|date:"d/m/Y" }}, al terminar el año escolar. Mientras tanto puede dejar la revisión lista.</div>
+      {% else %}
+        <p class="ayuda" style="margin-top:0">Esta acción mueve a los estudiantes a los cursos de {{ siguiente }} y registra a los egresados. No se puede deshacer.</p>
+        <form method="post" data-confirmar="¿Procesar el fin de año {{ proceso.anio }}? Esta acción no se puede deshacer.">{% csrf_token %}
+          <button class="boton" type="submit">Procesar fin de año</button></form>
+      {% endif %}
+    </div>
+  </aside>
+</div>
+{% endblock %}

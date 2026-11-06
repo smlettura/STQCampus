@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Conflicto{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina">
+  <div><h1>{{ c.get_tipo_gestion_display }} · {{ c.curso.nombre }}</h1><p class="sub">{{ c.fecha|date:"d/m/Y" }} · encargada {{ c.encargada }}
+    <span class="estado {% if c.resultado == 'con_acuerdo' %}verde{% elif c.resultado == 'en_proceso' %}ambar{% else %}gris{% endif %}">{{ c.get_resultado_display }}</span></p></div>
+  <div class="acciones">{% if "convivencia.gestionar" in permisos %}<a class="boton secundario" href="{% url 'convivencia:conflicto_editar' c.pk %}">Editar</a>{% endif %}
+    <a class="boton secundario" href="{% url 'convivencia:conflictos' %}">Volver</a></div>
+</div>
+<div class="rejilla-2">
+  <div class="tarjeta"><h2>Descripción</h2><p style="white-space:pre-line">{{ c.descripcion }}</p>
+    <h2 style="margin-top:18px">Acuerdos</h2><p style="white-space:pre-line">{{ c.acuerdos|default:"Sin acuerdos registrados." }}</p></div>
+  <div class="tarjeta"><h2>Participantes ({{ participantes|length }})</h2>
+    <ul class="lista-simple">{% for e in participantes %}<li>{% if "estudiante.ver_todos" in permisos %}<a href="{% url 'estudiantes:detalle' e.pk %}">{{ e.nombre_lista }} <small class="ayuda" style="margin:0">{{ e.curso.nombre }}</small></a>{% else %}{{ e.nombre_lista }}{% endif %}</li>{% endfor %}</ul></div>
+</div>
+{% endblock %}

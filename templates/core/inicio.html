@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Inicio{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Hola, {{ user.nombre_completo }}</h1><p class="sub">{{ hoy|date:"l j \d\e F \d\e Y"|capfirst }}</p></div>
+  <div class="acciones">
+    {% if "caso.derivar" in permisos %}<a class="boton secundario" href="{% url 'casos:derivar' %}">Derivar al equipo psicosocial</a>{% endif %}
+  </div>
+</div>
+
+<div class="cifras">
+  {% if n_derivaciones is not None %}<a class="cifra{% if n_derivaciones %} alerta{% endif %}" href="{% url 'casos:derivaciones' %}"><div class="valor">{{ n_derivaciones }}</div><div class="rotulo">Derivaciones por revisar</div></a>{% endif %}
+  {% if n_mis_casos is not None %}<a class="cifra" href="{% url 'casos:lista' %}?mios=1"><div class="valor">{{ n_mis_casos }}</div><div class="rotulo">Casos activos a mi cargo</div></a>{% endif %}
+  {% if alertas_sin_leer %}<a class="cifra alerta" href="{% url 'alertas:lista' %}"><div class="valor">{{ alertas_sin_leer }}</div><div class="rotulo">Alertas sin leer</div></a>{% endif %}
+  {% if alertas_abiertas is not None %}<a class="cifra" href="{% url 'alertas:lista' %}"><div class="valor">{{ alertas_abiertas }}</div><div class="rotulo">Alertas abiertas{% if "alerta.ver_constancias" in permisos %} en el colegio{% else %} asignadas{% endif %}</div></a>{% endif %}
+  {% if denuncias_pendientes is not None %}<a class="cifra{% if denuncias_pendientes %} alerta{% endif %}" href="{% url 'alertas:lista' %}?estado=abiertas"><div class="valor">{{ denuncias_pendientes }}</div><div class="rotulo">Posibles delitos sin denuncia (24 h)</div></a>{% endif %}
+  {% if n_avisos is not None %}<a class="cifra" href="{% url 'evaluacion:avisos' %}"><div class="valor">{{ n_avisos }}</div><div class="rotulo">Reevaluaciones por atender</div></a>{% endif %}
+  {% if evaluaciones_en_proceso is not None %}<div class="cifra"><div class="valor">{{ evaluaciones_en_proceso }}</div><div class="rotulo">Evaluaciones en proceso</div></div>{% endif %}
+  {% if retenciones_propuestas is not None %}<a class="cifra{% if retenciones_propuestas %} alerta{% endif %}" href="{% url 'cumplimiento:retenciones' %}"><div class="valor">{{ retenciones_propuestas }}</div><div class="rotulo">Eliminaciones por autorizar</div></a>{% endif %}
+  {% if arco_pendientes is not None %}<a class="cifra" href="{% url 'cumplimiento:arco' %}"><div class="valor">{{ arco_pendientes }}</div><div class="rotulo">Solicitudes ARCO+ pendientes</div></a>{% endif %}
+  {% if mis_estudiantes is not None %}<a class="cifra" href="{% url 'estudiantes:lista' %}"><div class="valor">{{ mis_estudiantes }}</div><div class="rotulo">Estudiantes de mi curso</div></a>{% endif %}
+</div>
+
+<div class="rejilla">
+  {% if notificaciones %}
+  <div class="tarjeta">
+    <h2>Alertas asignadas</h2>
+    <table class="tabla"><tbody>
+    {% for n in notificaciones %}
+      <tr><td><a href="{% url 'alertas:detalle' n.alerta_id %}">{{ n.alerta.get_tipo_situacion_display }}</a>
+        {% if not n.fecha_hora_lectura %}<span class="insignia rojo">nueva</span>{% endif %}</td>
+        <td class="num">{{ n.fecha_hora_envio|date:"d-m H:i" }}</td></tr>
+    {% endfor %}
+    </tbody></table>
+  </div>
+  {% endif %}
+  {% if derivaciones_pendientes %}
+  <div class="tarjeta">
+    <h2>Derivaciones por revisar</h2>
+    <table class="tabla"><tbody>
+    {% for d in derivaciones_pendientes %}
+      <tr><td><a href="{% url 'casos:abrir' d.pk %}">{{ d.estudiante }}</a><br><small class="ayuda">{{ d.estudiante.curso }} · derivó {{ d.derivante }}</small></td>
+        <td class="num">{{ d.fecha_hora|date:"d-m-Y" }}</td></tr>
+    {% endfor %}
+    </tbody></table>
+  </div>
+  {% endif %}
+  {% if mis_casos %}
+  <div class="tarjeta">
+    <h2>Mis casos activos</h2>
+    <table class="tabla"><tbody>
+    {% for c in mis_casos %}
+      <tr><td><a href="{% url 'casos:detalle' c.pk %}">{{ c.estudiante }}</a><br><small class="ayuda">{{ c.get_tipo_proceso_display }}</small></td>
+        <td><span class="insignia {{ c.estado|color_estado }}">{{ c.get_estado_display }}</span></td></tr>
+    {% endfor %}
+    </tbody></table>
+  </div>
+  {% endif %}
+  {% if mis_derivaciones %}
+  <div class="tarjeta">
+    <h2>Mis derivaciones</h2>
+    <table class="tabla"><tbody>
+    {% for d in mis_derivaciones %}
+      <tr><td>{{ d.estudiante }}<br><small class="ayuda">{{ d.fecha_hora|date:"d-m-Y H:i" }}</small></td>
+        <td>{% if d.pendiente %}<span class="insignia ambar">en revisión</span>{% else %}<span class="insignia verde">recibida por el equipo</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody></table>
+    <p class="ayuda">Por confidencialidad, el detalle del acompañamiento solo lo ve el equipo psicosocial.</p>
+  </div>
+  {% endif %}
+  {% if avisos %}
+  <div class="tarjeta">
+    <h2>Reevaluaciones PIE</h2>
+    <table class="tabla"><tbody>
+    {% for a in avisos %}
+      <tr><td><a href="{% url 'evaluacion:detalle' a.evaluacion_id %}">{{ a.evaluacion.caso.estudiante }}</a></td>
+        <td class="num">{% if a.fecha_programada < hoy %}<span class="insignia rojo">vencida {{ a.fecha_programada|date:"d-m-Y" }}</span>{% else %}{{ a.fecha_programada|date:"d-m-Y" }}{% endif %}</td></tr>
+    {% endfor %}
+    </tbody></table>
+  </div>
+  {% endif %}
+</div>
+{% if not permisos %}<div class="aviso info">Su cuenta aún no tiene roles asignados. Contacte al administrador.</div>{% endif %}
+{% endblock %}

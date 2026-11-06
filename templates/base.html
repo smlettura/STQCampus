@@ -1,0 +1,109 @@
+{% load static ui %}<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block titulo %}Inicio{% endblock %} · {{ NOMBRE_MARCA }}</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
+  <link rel="preload" href="{% static 'fonts/manrope-latin-400-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{% static 'fonts/manrope-latin-700-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <script src="{% static 'js/app.js' %}" defer></script>
+</head>
+<body>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
+{% if user.is_authenticated %}
+<div class="app{% if mfa_pendiente %} sin-menu{% endif %}">
+  {% if not mfa_pendiente %}
+  <nav class="lateral" id="menu" aria-label="Menú principal">
+    <a class="marca" href="{% url 'core:inicio' %}">
+      <span class="logo" aria-hidden="true">S</span>
+      <span class="marca-texto">{{ NOMBRE_MARCA }}<small>Bienestar psicológico</small></span>
+    </a>
+    <div class="navegacion">
+    {% for g in menu %}
+      <a class="item{% if g.activo %} activo{% endif %}" href="{{ g.url }}"{% if g.activo and g.unico %} aria-current="page"{% endif %}>
+        {% icono g.icono %}<span class="item-texto">{{ g.nombre }}</span>
+        {% if g.contador and not g.activo %}<span class="contador" title="Sin leer">{{ g.contador }}</span>{% endif %}
+      </a>
+      {% if g.activo and not g.unico %}
+      <div class="subitems">
+        {% for e in g.enlaces %}
+        <a class="{% if e.activo %}activo{% endif %}{% if e.urgente %} urgente{% endif %}" href="{{ e.url }}"{% if e.activo %} aria-current="page"{% endif %}>
+          {{ e.nombre }}{% if e.contador %}<span class="contador" title="Sin leer">{{ e.contador }}</span>{% endif %}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endfor %}
+    </div>
+    <div class="usuario">
+      <a class="tarjeta-usuario" href="{% url 'cuentas:mi_cuenta' %}" title="Mi cuenta">
+        <span class="avatar" aria-hidden="true">{{ iniciales }}</span>
+        <span class="quien"><strong>{{ user.nombre_completo }}</strong>
+          <small>{% for a in roles_usuario %}{{ a.rol.nombre }}{% if not forloop.last %} · {% endif %}{% empty %}Sin rol asignado{% endfor %}</small></span>
+      </a>
+      <form method="post" action="{% url 'cuentas:salir' %}">{% csrf_token %}
+        <button type="submit" class="salir" aria-label="Cerrar sesión" title="Cerrar sesión">{% icono "salir" %}</button>
+      </form>
+    </div>
+  </nav>
+  {% endif %}
+  <div class="area">
+    <header class="barra">
+      {% if mfa_pendiente %}
+        <span class="marca-simple"><span class="logo" aria-hidden="true">S</span>{{ NOMBRE_MARCA }}</span>
+        <div class="espacio"></div>
+        <span class="quien-simple">{{ user.nombre_completo }}</span>
+        <form method="post" action="{% url 'cuentas:salir' %}">{% csrf_token %}
+          <button type="submit" class="boton secundario">Salir</button></form>
+      {% else %}
+        <button class="btn-menu" type="button" aria-controls="menu" aria-expanded="false" aria-label="Abrir menú">{% icono "menu" 20 %}</button>
+        {% if "estudiante.ver_todos" in permisos or "estudiante.ver_curso" in permisos %}
+        <form class="buscador" method="get" action="{% url 'estudiantes:lista' %}" role="search">
+          {% icono "buscar" 16 %}
+          <input type="search" name="q" id="buscador-global" placeholder="Ir a un estudiante por nombre o RUT…" aria-label="Buscar estudiante por nombre o RUT" aria-keyshortcuts="Control+K">
+          <input type="hidden" name="ir" value="1">
+          <span class="kbd" aria-hidden="true">Ctrl K</span>
+        </form>
+        {% endif %}
+        <div class="espacio"></div>
+        {% if filtros_barra %}
+        <div class="filtros-barra solo-escritorio">{% include "comun/_filtros_barra.html" %}</div>
+        {% endif %}
+        <a class="campana" href="{% url 'alertas:lista' %}" aria-label="Alertas{% if alertas_sin_leer %}: {{ alertas_sin_leer }} sin leer{% endif %}">
+          {% icono "campana" %}{% if alertas_sin_leer %}<span class="punto"></span>{% endif %}</a>
+        {% block accion_barra %}
+        {% if accion_barra %}
+        {% if "alerta.registrar" in permisos %}<a class="boton-icono boton-alerta" href="{% url 'alertas:registrar' %}" aria-label="Registrar alerta de riesgo" title="Registrar alerta de riesgo">{% icono "alertas" 18 %}</a>{% endif %}
+        <a class="boton" href="{{ accion_barra.url }}">{% icono "mas" 16 %}<span class="texto-boton">{{ accion_barra.texto }}</span></a>
+        {% elif "alerta.registrar" in permisos %}
+        <a class="boton peligro" href="{% url 'alertas:registrar' %}">{% icono "mas" 16 %}<span class="texto-boton">Registrar alerta</span></a>
+        {% endif %}
+        {% endblock %}
+      {% endif %}
+    </header>
+    <main class="contenido" id="contenido">
+      {% if filtros_barra %}<div class="filtros-barra solo-movil">{% include "comun/_filtros_barra.html" %}</div>{% endif %}
+      {% for m in messages %}<div class="aviso {{ m.tags }}" role="status">{{ m }}</div>{% endfor %}
+      {% block contenido %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% else %}
+<main class="acceso" id="contenido">
+  <div class="acceso-panel">
+    <img src="{% static 'img/escudo.png' %}" alt="Escudo del {{ NOMBRE_COLEGIO }}" width="200" height="235">
+    <div class="acceso-nombre">{{ NOMBRE_MARCA }}<small>{{ NOMBRE_COLEGIO|upper }}</small></div>
+    <p>{{ NOMBRE_PLATAFORMA }}</p>
+  </div>
+  <div class="acceso-form">
+    <div class="caja-acceso">
+      {% for m in messages %}<div class="aviso {{ m.tags }}" role="status">{{ m }}</div>{% endfor %}
+      {% block acceso %}{% endblock %}
+    </div>
+  </div>
+</main>
+{% endif %}
+</body>
+</html>

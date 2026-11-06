@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titulo %}Configurar segundo factor{% endblock %}
+{% block contenido %}
+<div class="tarjeta formulario">
+  <h1>Configure su segundo factor</h1>
+  <p class="sub">Su perfil accede a información sensible, por lo que el ingreso exige un código temporal además de la
+    contraseña (RNF-01).</p>
+  <ol>
+    <li>Instale una aplicación de autenticación (Google Authenticator, Microsoft Authenticator u otra compatible con TOTP).</li>
+    <li>Si ya tiene una cuenta «STQCampus Bienestar» de un intento anterior, elimínela de la aplicación: cada
+      configuración crea una clave nueva.</li>
+    <li>Escanee este código QR o ingrese la clave manualmente (tipo «basada en el tiempo»).</li>
+    <li>Escriba el código de 6 dígitos que muestra la aplicación.</li>
+  </ol>
+  <div class="qr" aria-label="Código QR para configurar el segundo factor">{{ qr }}</div>
+  <p class="secreto" aria-label="Clave para ingreso manual">{{ secreto }}</p>
+  <p class="ayuda">Hora de este computador: <strong>{{ ahora|date:"H:i:s" }}</strong>. Debe coincidir con la del teléfono
+    (menos de 30 segundos de diferencia); si no, los códigos no funcionarán.</p>
+  <form method="post">
+    {% csrf_token %}
+    {% include "comun/_campos.html" %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="pie-form"><button type="submit" class="boton">Activar segundo factor</button></div>
+  </form>
+</div>
+{% endblock %}

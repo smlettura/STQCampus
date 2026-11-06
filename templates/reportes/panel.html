@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Estadísticas{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><div><h1>Estadísticas</h1><p class="sub">Cifras agregadas, sin datos personales (RF-15). Periodo: {{ r.periodo.desde }} a {{ r.periodo.hasta }}.</p></div>
+  <span class="contexto">Año escolar {{ filtros.anio }}{% if filtros.mes %} · {{ filtros.nombre_mes }}{% endif %}</span></div>
+
+<h2>Atenciones psicosociales</h2>
+<div class="kpis">
+  <div class="kpi"><span class="rotulo">Atenciones registradas</span><span class="valor">{{ r.atenciones.total|miles }}</span><span class="detalle">en el periodo</span></div>
+  <div class="kpi"><span class="rotulo">Estudiantes atendidos</span><span class="valor">{{ r.atenciones.estudiantes|miles }}</span><span class="detalle">distintos</span></div>
+  <div class="kpi"><span class="rotulo">Duración promedio</span><span class="valor">{{ r.atenciones.duracion_promedio }}</span><span class="detalle">minutos</span></div>
+  <div class="kpi{% if r.atenciones.urgencia_alta %} alerta{% endif %}"><span class="rotulo">Con urgencia alta</span><span class="valor">{{ r.atenciones.urgencia_alta }}</span><span class="detalle">atenciones</span></div>
+</div>
+<div class="rejilla">
+  <div class="tarjeta"><h2>Atenciones por mes</h2>
+    <ul class="barras">{% for s in r.atenciones.por_mes %}<li><span>{{ s.etiqueta }}</span><span class="pista"><span class="relleno" style="width:{{ s.porcentaje }}%;display:block"></span></span><strong class="num">{{ s.valor }}</strong></li>{% endfor %}</ul></div>
+  <div class="tarjeta"><h2>Motivos de consulta</h2>
+    <ul class="barras">{% for s in r.atenciones.por_motivo %}{% if s.valor %}<li><span>{{ s.etiqueta }}</span><span class="pista"><span class="relleno" style="width:{{ s.porcentaje }}%;display:block"></span></span><strong class="num">{{ s.valor }}</strong></li>{% endif %}{% empty %}<li class="vacio">Sin atenciones.</li>{% endfor %}</ul></div>
+  <div class="tarjeta"><h2>Tipo de atención y urgencia</h2>
+    <ul class="barras">{% for s in r.atenciones.por_tipo %}<li><span>{{ s.etiqueta }}</span><span class="pista"><span class="relleno" style="width:{{ s.porcentaje }}%;display:block"></span></span><strong class="num">{{ s.valor }}</strong></li>{% endfor %}</ul>
+    <ul class="barras" style="margin-top:16px">{% for s in r.atenciones.por_urgencia %}<li class="{% if s.clave == 'alta' %}rojo{% endif %}"><span>Urgencia {{ s.etiqueta|lower }}</span><span class="pista"><span class="relleno" style="width:{{ s.porcentaje }}%;display:block"></span></span><strong class="num">{{ s.valor }}</strong></li>{% endfor %}</ul></div>
+</div>
+
+<h2 style="margin-top:8px">Casos, alertas y cumplimiento</h2>
+<div class="kpis">
+  <div class="kpi"><span class="rotulo">Casos activos</span><span class="valor">{{ r.casos_activos }}</span><span class="detalle">a la fecha</span></div>
+  <div class="kpi{% if r.derivaciones_pendientes %} alerta{% endif %}"><span class="rotulo">Derivaciones pendientes</span><span class="valor">{{ r.derivaciones_pendientes }}</span><span class="detalle">por revisar</span></div>
+  <div class="kpi"><span class="rotulo">Días de derivación a caso</span><span class="valor">{{ r.dias_promedio_derivacion_a_caso|default:"—" }}</span><span class="detalle">promedio</span></div>
+  <div class="kpi{% if r.reevaluaciones_vencidas %} alerta{% endif %}"><span class="rotulo">Reevaluaciones vencidas</span><span class="valor">{{ r.reevaluaciones_vencidas }}</span><span class="detalle">{{ r.reevaluaciones_proximas }} próximas</span></div>
+  <div class="kpi"><span class="rotulo">Alertas en el periodo</span><span class="valor">{{ r.alertas_total }}</span><span class="detalle">{{ r.alertas_abiertas }} abiertas</span></div>
+  <div class="kpi"><span class="rotulo">Denuncias dentro de 24 h</span><span class="valor">{{ r.denuncias_en_plazo }}/{{ r.denuncias }}</span><span class="detalle">Código Procesal Penal</span></div>
+  <div class="kpi{% if r.arco_vencidas %} alerta{% endif %}"><span class="rotulo">Solicitudes ARCO+</span><span class="valor">{{ r.arco_pendientes }}</span><span class="detalle">{{ r.arco_vencidas }} vencidas</span></div>
+</div>
+<div class="rejilla">
+  <div class="tarjeta"><h2>Casos activos por tipo de proceso</h2>
+    <ul class="barras">{% for s in r.casos_por_tipo %}<li><span>{{ s.etiqueta }}</span><span class="pista"><span class="relleno" style="width:{{ s.porcentaje }}%;display:block"></span></span><strong class="num">{{ s.valor }}</strong></li>{% endfor %}</ul></div>
+  <div class="tarjeta"><h2>Casos por estado</h2>
+    <ul class="barras">{% for s in r.casos_por_estado %}<li><span>{{ s.etiqueta }}</span><span class="pista"><span class="relleno" style="width:{{ s.porcentaje }}%;display:block"></span></span><strong class="num">{{ s.valor }}</strong></li>{% endfor %}</ul></div>
+  <div class="tarjeta"><h2>Alertas por tipo de situación</h2>
+    <ul class="barras">{% for s in r.alertas_por_tipo %}<li class="rojo"><span>{{ s.etiqueta }}</span><span class="pista"><span class="relleno" style="width:{{ s.porcentaje }}%;display:block"></span></span><strong class="num">{{ s.valor }}</strong></li>{% endfor %}</ul></div>
+  <div class="tarjeta"><h2>Módulo de IA</h2>
+    <p><span class="insignia morado">EN CONFIGURACIÓN</span></p>
+    <p class="ayuda">Cuando el módulo esté disponible, aquí se mostrarán los borradores generados, validados y descartados, y las
+      salidas marcadas como incorrectas por las profesionales (RF-19).</p></div>
+</div>
+{% endblock %}

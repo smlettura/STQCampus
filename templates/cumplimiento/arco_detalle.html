@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Solicitud ARCO+{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>{{ s.get_tipo_derecho_display }} — {{ s.estudiante }}</h1>
+    <p class="sub">Solicitada por {{ s.apoderado }} el {{ s.fecha_recepcion|date:"d-m-Y" }} · plazo {{ s.fecha_limite|date:"d-m-Y" }}
+      {% if s.vencida %}<span class="insignia rojo">vencida</span>{% endif %}</p></div>
+  <div class="acciones">{% if s.tipo_derecho == "acceso" or s.tipo_derecho == "portabilidad" %}
+    <a class="boton" href="{% url 'cumplimiento:arco_exportar' s.pk %}">Exportar expediente (JSON)</a>{% endif %}
+    {% if s.estudiante %}<a class="boton secundario" href="{% url 'estudiantes:detalle' s.estudiante_id %}">Ver ficha</a>{% endif %}</div>
+</div>
+<div class="tarjeta formulario">
+  <h2>Respuesta</h2>
+  <form method="post">{% csrf_token %}{% include "comun/_campos.html" %}
+    <div class="pie-form"><button class="boton" type="submit">Guardar</button>
+      <a class="boton secundario" href="{% url 'cumplimiento:arco' %}">Volver</a></div></form>
+  <p class="ayuda">La exportación queda registrada en la bitácora. El contenido clínico solo se incluye si la exporta el equipo psicosocial.</p>
+</div>
+{% endblock %}

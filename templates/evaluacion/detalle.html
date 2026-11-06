@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Evaluación diagnóstica{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Evaluación diagnóstica integral</h1>
+    <p class="sub"><a href="{% url 'casos:detalle' ev.caso_id %}">{{ ev.caso.estudiante }}</a> · {{ ev.get_tipo_evaluacion_display }} ·
+      {{ ev.fecha_evaluacion|date:"d-m-Y" }} <span class="insignia {{ ev.estado|color_estado }}">{{ ev.get_estado_display }}</span></p></div>
+  <div class="acciones">
+    {% if gestiona %}
+      <a class="boton secundario" href="{% url 'evaluacion:editar' ev.pk %}">Editar</a>
+      <a class="boton secundario" href="{% url 'evaluacion:participacion' ev.pk %}">Agregar participante</a>
+      <form class="enlinea" method="post" action="{% url 'evaluacion:cerrar' ev.pk %}" data-confirmar="¿Cerrar la evaluación? No podrá modificarse.">{% csrf_token %}
+        <button class="boton" type="submit">Cerrar evaluación</button></form>
+    {% endif %}
+  </div>
+</div>
+<div class="rejilla">
+  <div class="tarjeta">
+    <h2>Datos</h2>
+    <dl class="datos"><dt>Tipo de NEE</dt><dd>{{ ev.tipo_nee }}</dd>
+      <dt>Necesidad educativa del estudiante</dt><dd>{{ ev.caso.estudiante.get_necesidad_educativa_display }}</dd>
+      <dt>Reevaluación</dt><dd>{{ ev.fecha_reevaluacion|date:"d-m-Y"|default:"—" }}</dd></dl>
+    <h3 style="margin-top:1rem">Diagnóstico integral</h3>
+    <p>{{ ev.diagnostico|linebreaksbr|default:"<span class='vacio'>Pendiente.</span>" }}</p>
+    <small class="ayuda">Contenido cifrado; confidencial según el Decreto 170/2009.</small>
+  </div>
+  <div class="tarjeta">
+    <h2>Profesionales participantes</h2>
+    {% for p in participaciones %}<div class="grupo"><strong>{{ p.usuario }}</strong> · {{ p.rol_profesional }} · {{ p.fecha|date:"d-m-Y" }}
+      <p>{{ p.aporte|linebreaksbr }}</p></div>
+    {% empty %}<p class="vacio">Aún no hay participantes registrados. Se requiere al menos uno para cerrar.</p>{% endfor %}
+  </div>
+</div>
+{% if planes %}<div class="tarjeta"><h2>Planes de apoyo asociados</h2>
+  {% for p in planes %}<p>{{ p.get_tipo_display }} · {{ p.get_estado_display }} · desde {{ p.fecha_inicio|date:"d-m-Y" }}</p>{% endfor %}</div>{% endif %}
+{% endblock %}

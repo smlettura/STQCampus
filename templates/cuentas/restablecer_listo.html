@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block titulo %}Contraseña actualizada{% endblock %}
+{% block acceso %}
+<h1>Contraseña actualizada</h1>
+<p>Ya puede ingresar con su nueva contraseña. Si su perfil usa segundo factor, se le pedirá el código de siempre.</p>
+<a class="boton grande" href="{% url 'cuentas:login' %}">Iniciar sesión</a>
+{% endblock %}

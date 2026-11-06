@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Cursos{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>Cursos</h1><span class="contexto">Año escolar {{ filtros.anio }}</span></div>
+<div class="kpis">
+  <div class="kpi"><span class="rotulo">Cursos</span><span class="valor">{{ total_cursos }}</span><span class="detalle">{{ kpi.rango|default:"sin cursos" }}</span></div>
+  <div class="kpi"><span class="rotulo">Estudiantes</span><span class="valor">{{ kpi.estudiantes|miles }}</span><span class="detalle">{{ kpi.activos|miles }} activos</span></div>
+  <div class="kpi"><span class="rotulo">Prebásica</span><span class="valor">{{ kpi.por_grupo|clave:"Prebásica"|default:0 }}</span><span class="detalle">cursos</span></div>
+  <div class="kpi"><span class="rotulo">Básica</span><span class="valor">{{ kpi.por_grupo|clave:"Básica"|default:0 }}</span><span class="detalle">cursos</span></div>
+  <div class="kpi"><span class="rotulo">Media</span><span class="valor">{{ kpi.por_grupo|clave:"Media"|default:0 }}</span><span class="detalle">cursos</span></div>
+</div>
+<div class="tarjeta">
+  <form method="get" action="{% url 'estudiantes:cursos_pdf' %}">
+    <input type="hidden" name="anio" value="{{ filtros.anio }}">
+    <div class="seleccion-cursos">
+      <label class="grupo-casilla" style="align-items:center"><input type="checkbox" data-seleccionar-todos="ids"> <span>Seleccionar todos</span>
+        <span class="insignia gris" data-contador="ids">0 seleccionados</span></label>
+      <button class="boton secundario" type="submit">{% icono "descargar" 16 %} Descargar selección</button>
+    </div>
+    {% for g in grupos %}
+    <div class="grupo-cursos">
+      <h3>{{ g.nombre }}<small>{{ g.cursos|length }} curso{{ g.cursos|length|pluralize }}</small></h3>
+      <div class="cursos-grid">
+      {% for c in g.cursos %}
+        <div class="curso-card">
+          <input type="checkbox" name="ids" value="{{ c.pk }}" aria-label="Seleccionar {{ c.nombre }}">
+          <div class="nombre"><a href="{% url 'estudiantes:curso' c.pk %}">{{ c.nombre }}</a><small{% if c.profesor_jefe %} title="Profesor jefe: {{ c.profesor_jefe }}"{% endif %}>{{ c.n }} estudiante{{ c.n|pluralize }}</small></div>
+          <a class="boton-icono" href="{% url 'estudiantes:curso' c.pk %}" aria-label="Ver curso {{ c.nombre }}" title="Ver curso">{% icono "ojo" 16 %}</a>
+          <a class="boton-icono" href="{% url 'estudiantes:curso_pdf' c.pk %}" aria-label="Descargar PDF de {{ c.nombre }}" title="Descargar nómina en PDF">{% icono "descargar" 16 %}</a>
+        </div>
+      {% endfor %}
+      </div>
+    </div>
+    {% empty %}
+    <div class="estado-vacio"><h2>No hay cursos en {{ filtros.anio }}</h2>
+      <p>{% if "curso.gestionar" in permisos %}Cree los cursos del año o procese la promoción del año anterior.{% else %}El administrador aún no crea los cursos de este año.{% endif %}</p></div>
+    {% endfor %}
+  </form>
+</div>
+{% endblock %}

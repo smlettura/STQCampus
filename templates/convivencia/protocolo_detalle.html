@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Protocolo{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina">
+  <div><h1>{{ p.get_protocolo_display }}</h1>
+    <p class="sub">Activado el {{ p.fecha_activacion|date:"d/m/Y" }} · {{ nivel }} · {{ p.curso.nombre }} · responsable {{ p.responsable }}
+      <span class="estado {% if p.estado == 'abierto' %}ambar{% else %}gris{% endif %}">{{ p.get_estado_display }}{% if p.fecha_cierre %} el {{ p.fecha_cierre|date:"d/m/Y" }}{% endif %}</span></p></div>
+  <a class="boton secundario" href="{% url 'convivencia:protocolos' %}">Volver</a>
+</div>
+<div class="rejilla-2">
+  <div class="tarjeta">
+    <h2>Observaciones</h2>
+    <p style="white-space:pre-line">{{ p.observaciones|default:"Sin observaciones." }}</p>
+    {% if p.estudiante %}<p class="ayuda">Estudiante: {% if "estudiante.ver_todos" in permisos %}<a href="{% url 'estudiantes:detalle' p.estudiante_id %}">{{ p.estudiante }}</a>{% else %}{{ p.estudiante }}{% endif %}</p>{% endif %}
+    {% if p.alerta_id %}<p class="ayuda">Originado en la <a href="{% url 'alertas:detalle' p.alerta_id %}">alerta de riesgo N° {{ p.alerta_id }}</a> (acceso según el reglamento).</p>{% endif %}
+  </div>
+  {% if form %}
+  <div class="tarjeta">
+    <h2>Cerrar protocolo</h2>
+    <form method="post" data-confirmar="¿Cerrar el protocolo? Quedará como finalizado.">{% csrf_token %}
+      {% include "comun/_campos.html" %}
+      <div class="pie-form"><button class="boton" type="submit">Cerrar protocolo</button></div>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

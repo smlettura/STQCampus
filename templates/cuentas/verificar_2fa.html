@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titulo %}Verificación en dos pasos{% endblock %}
+{% block contenido %}
+<div class="tarjeta formulario">
+  <h1>Verificación en dos pasos</h1>
+  <p class="sub">Ingrese el código de 6 dígitos que muestra su aplicación de autenticación.</p>
+  <form method="post">
+    {% csrf_token %}
+    {% include "comun/_campos.html" %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="pie-form"><button type="submit" class="boton">Verificar</button></div>
+  </form>
+  <p class="ayuda">Hora de este computador: <strong>{{ ahora|date:"H:i:s" }}</strong>. Si difiere de la del teléfono, active la
+    hora automática en ambos.</p>
+  <p class="ayuda">¿Perdió su teléfono? Pida al administrador que restablezca su segundo factor.</p>
+</div>
+{% endblock %}

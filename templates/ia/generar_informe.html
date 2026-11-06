@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Generar informe (IA){% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>Generar informe</h1><span class="contexto">Asistido por IA · <span class="insignia morado">EN CONFIGURACIÓN</span></span></div>
+<div class="nota-info" style="margin-bottom:14px">{% icono "info" 18 %}
+  <p>El informe es un <strong>borrador</strong>: revísalo, corrígelo y fírmalo antes de compartirlo. La IA no reemplaza el criterio profesional.</p></div>
+
+<div class="rejilla-2 mitades">
+  <div>
+    <section class="tarjeta">
+      <div class="paso"><span class="numero">1</span><div><h2>Estudiante y periodo</h2><p>Sobre quién se redactará el informe.</p></div></div>
+      <form method="get" class="campos dos ancha-izq">
+        <div class="grupo"><label for="id_estudiante">Estudiante</label>
+          <select class="campo" name="estudiante" id="id_estudiante" data-autoenvio>
+            <option value="">Seleccionar estudiante</option>
+            {% for x in estudiantes %}<option value="{{ x.pk }}"{% if estudiante and x.pk == estudiante.pk %} selected{% endif %}>{{ x.nombres }} {{ x.apellidos }} · {{ x.curso.nombre }}</option>{% endfor %}
+          </select></div>
+        <div class="grupo"><label for="id_periodo">Periodo</label>
+          <select class="campo" name="periodo" id="id_periodo" data-autoenvio>
+            {% for p, t in periodos %}<option value="{{ p }}"{% if p == periodo %} selected{% endif %}>{{ t }}</option>{% endfor %}
+          </select></div>
+        <noscript><button class="boton secundario" type="submit">Ver atenciones</button></noscript>
+      </form>
+      <span class="rotulo-grupo" style="font-weight:700;font-size:13px">Atenciones que se incluirán</span>
+      {% if estudiante %}
+      <fieldset class="deshabilitado" disabled>
+        <legend class="oculto-accesible">Atenciones</legend>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+        {% for s in sesiones %}<label class="opcion deshabilitada"><input type="checkbox" checked> <span class="mono" style="word-break:normal">{{ s.fecha_hora|date:"d/m/Y" }}</span> {{ s.titulo }} · {{ s.get_motivo_display }}</label>
+        {% empty %}<p class="vacio">No hay atenciones registradas en el periodo.</p>{% endfor %}
+        </div>
+      </fieldset>
+      {% else %}<p class="vacio">Seleccione un estudiante para ver sus atenciones.</p>{% endif %}
+    </section>
+    <section class="tarjeta" style="margin-top:12px">
+      <div class="paso"><span class="numero">2</span><div><h2>Tipo y contenido</h2><p>A quién va dirigido y qué secciones incluir.</p></div></div>
+      <fieldset class="deshabilitado" disabled>
+        <legend class="oculto-accesible">Tipo de informe y secciones</legend>
+        <div class="opciones">{% for c, t in tipos %}<label class="opcion deshabilitada"><input type="radio" name="tipo" value="{{ c }}"{% if forloop.first %} checked{% endif %}> {{ t }}</label>{% endfor %}</div>
+        <div class="campos dos" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--linea)">
+          {% for c, t in secciones %}<label class="grupo-casilla" style="margin-bottom:8px"><input type="checkbox"{% if c in secciones_defecto %} checked{% endif %}> <span>{{ t }}</span></label>{% endfor %}
+        </div>
+      </fieldset>
+    </section>
+    <div class="acciones" style="margin-top:12px">
+      <button class="boton boton-generar" type="button" disabled aria-describedby="ia-estado" style="flex:1">{% icono "chispa" 16 %} Generar informe</button>
+    </div>
+    <p class="ayuda" id="ia-estado">Disponible cuando el modelo configurado sea validado por el equipo.</p>
+  </div>
+
+  <div class="borrador-ia">
+    <div class="cabeza">{% icono "chispa" 18 %}<h2>Borrador generado</h2><span class="insignia ambar">SIN GENERAR</span></div>
+    <div class="cuerpo">
+      <h2 style="font-size:17px;margin:0">Informe de atención psicosocial</h2>
+      <p class="sub" style="margin:2px 0 14px">{% if estudiante %}{{ estudiante.nombres }} {{ estudiante.apellidos }} · {{ estudiante.curso.nombre }}{% else %}[Estudiante] · [Curso]{% endif %} · {{ hoy|date:"d/m/Y" }}</p>
+      {% for c, t in secciones %}{% if c in secciones_defecto %}<h3>{{ t }}</h3><span class="esqueleto"></span><span class="esqueleto c90"></span><span class="esqueleto c70"></span>{% endif %}{% endfor %}
+      <div class="en-configuracion" role="status">{% icono "info" 18 %}
+        <div><strong>El módulo de IA se está configurando.</strong>
+          Cuando esté disponible, aquí aparecerá el borrador redactado a partir de las atenciones seleccionadas, para
+          revisarlo, editarlo, descargarlo en PDF y guardarlo en la ficha. Nada se enviará sin minimizar los datos
+          personales y todo borrador requerirá validación de una profesional.</div></div>
+    </div>
+    <div class="pie">
+      <button class="boton secundario" type="button" disabled>Editar</button>
+      <button class="boton secundario" type="button" disabled>{% icono "descargar" 15 %} Descargar PDF</button>
+      <button class="boton secundario" type="button" disabled>Regenerar</button>
+      <span class="espacio"></span>
+      {% if caso_abierto and "informe.gestionar" in permisos %}
+      <a class="boton" href="{% url 'evaluacion:informe_nuevo' caso_abierto.pk %}">Redactar informe manualmente</a>
+      {% else %}<button class="boton" type="button" disabled>Guardar en la ficha</button>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

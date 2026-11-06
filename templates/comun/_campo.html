@@ -1,0 +1,7 @@
+{% comment %}Un campo de formulario con rótulo, ayuda y errores. Uso: {% include "comun/_campo.html" with campo=form.x clase="ancho-total" %}{% endcomment %}
+<div class="grupo{% if campo.errors %} con-error{% endif %}{% if clase %} {{ clase }}{% endif %}">
+  <label for="{{ campo.id_for_label }}">{{ etiqueta|default:campo.label }}{% if campo.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+  {{ campo }}
+  {% if campo.help_text %}<small class="ayuda">{{ campo.help_text|safe }}</small>{% endif %}
+  {% for e in campo.errors %}<p class="error-campo" role="alert">{{ e }}</p>{% endfor %}
+</div>

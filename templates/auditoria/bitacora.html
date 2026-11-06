@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block titulo %}Bitácora de auditoría{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Bitácora de auditoría</h1><p class="sub">Registro de solo inserción, encadenado por hash (RF-10, RNF-03). Esta consulta también queda registrada.</p></div>
+  <form method="post" action="{% url 'auditoria:verificar' %}">{% csrf_token %}<button class="boton" type="submit">Verificar integridad</button></form>
+</div>
+<form class="filtros" method="get">
+  <select class="campo" name="accion" aria-label="Acción"><option value="">Todas las acciones</option>
+    {% for k, v in acciones %}<option value="{{ k }}" {% if filtros.accion == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+  <select class="campo" name="entidad" aria-label="Entidad"><option value="">Todas las entidades</option>
+    {% for e in entidades %}<option value="{{ e }}" {% if filtros.entidad == e %}selected{% endif %}>{{ e }}</option>{% endfor %}</select>
+  <input class="campo" name="id_entidad" value="{{ filtros.id_entidad|default:'' }}" placeholder="ID" inputmode="numeric" aria-label="ID de la entidad">
+  <input class="campo" name="usuario" value="{{ filtros.usuario|default:'' }}" placeholder="Correo del usuario" aria-label="Usuario">
+  <label>Desde <input class="campo" type="date" name="desde" value="{{ filtros.desde|default:'' }}"></label>
+  <label>Hasta <input class="campo" type="date" name="hasta" value="{{ filtros.hasta|default:'' }}"></label>
+  <button class="boton secundario" type="submit">Filtrar</button>
+</form>
+<div class="tarjeta tabla-scroll"><table class="tabla">
+  <thead><tr><th>#</th><th>Fecha y hora</th><th>Usuario</th><th>Acción</th><th>Entidad</th><th>Detalle</th><th>IP</th><th>Hash</th></tr></thead><tbody>
+  {% for e in pagina %}<tr><td data-rotulo="#" class="num">{{ e.pk }}</td><td data-rotulo="Fecha" class="nowrap">{{ e.fecha_hora|date:"d-m-Y H:i:s" }}</td>
+    <td data-rotulo="Usuario">{{ e.usuario.correo|default:"sistema" }}</td>
+    <td data-rotulo="Acción"><span class="insignia {% if e.accion == 'acceso_denegado' %}rojo{% elif e.accion == 'exportacion' %}ambar{% elif e.accion == 'consulta' %}gris{% endif %}">{{ e.get_accion_display }}</span></td>
+    <td data-rotulo="Entidad">{{ e.entidad }}{% if e.id_entidad %} #{{ e.id_entidad }}{% endif %}</td><td data-rotulo="Detalle">{{ e.detalle }}</td>
+    <td data-rotulo="IP">{{ e.ip_origen }}</td><td data-rotulo="Hash" class="mono">{{ e.hash_evento|truncatechars:14 }}</td></tr>
+  {% empty %}<tr><td colspan="8" class="vacio">Sin eventos.</td></tr>{% endfor %}
+</tbody></table>
+{% include "comun/_paginacion.html" %}</div>
+{% endblock %}

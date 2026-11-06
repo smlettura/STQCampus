@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Importar estudiantes{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>Importación masiva de estudiantes</h1><span class="contexto">Año escolar {{ anio }}</span></div>
+<div class="pantalla-form">
+  <div>
+    <section class="tarjeta">
+      <div class="paso"><span class="numero">1</span><div><h2>Descargue la plantilla</h2><p>Incluye las columnas, los cursos válidos de {{ anio }} y las instrucciones.</p></div></div>
+      <a class="boton secundario" href="{% url 'estudiantes:plantilla' %}">{% icono "descargar" 16 %} Descargar plantilla Excel</a>
+    </section>
+    <section class="tarjeta">
+      <div class="paso"><span class="numero">2</span><div><h2>Suba la planilla completa</h2><p>Se valida fila por fila antes de guardar: si hay un error, no se importa nada.</p></div></div>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% include "comun/_campos.html" %}
+        <div class="pie-form"><button type="submit" class="boton">{% icono "subir" 16 %} Validar e importar</button>
+          <a class="boton secundario" href="{% url 'estudiantes:lista' %}">Cancelar</a></div>
+      </form>
+    </section>
+    {% if errores %}
+    <section class="tarjeta">
+      <h2>Filas con errores ({{ errores|length }})</h2>
+      <div class="aviso error">No se importó ningún estudiante. Corrija estas filas y vuelva a subir la planilla.</div>
+      <table class="tabla"><thead><tr><th>Fila</th><th>Problema</th></tr></thead><tbody>
+      {% for fila, mensaje in errores %}<tr><td class="num" data-rotulo="Fila">{{ fila }}</td><td data-rotulo="Problema">{{ mensaje }}</td></tr>{% endfor %}
+      </tbody></table>
+    </section>
+    {% endif %}
+  </div>
+  <aside>
+    <div class="tarjeta">
+      <h2>Columnas</h2>
+      <ul class="lista-simple">{% for c, r in columnas %}<li>{{ r }}</li>{% endfor %}</ul>
+      <p class="ayuda">Las marcadas con * son obligatorias. El apoderado es opcional: si lo incluye, indique nombre y apellido y un teléfono o correo.</p>
+    </div>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Informe{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>{{ informe.get_tipo_display }}</h1>
+    <p class="sub"><a href="{% url 'casos:detalle' informe.caso_id %}">{{ informe.caso.estudiante }}</a>
+      <span class="insignia {{ informe.estado|color_estado }}">{{ informe.get_estado_display }}</span>
+      {% if informe.fecha_entrega %}· entregado el {{ informe.fecha_entrega|date:"d-m-Y" }}{% endif %}</p></div>
+  <div class="acciones">
+    {% if informe.estado == "borrador" %}
+      <a class="boton secundario" href="{% url 'evaluacion:informe_editar' informe.pk %}">Editar</a>
+      <form class="enlinea" method="post" action="{% url 'evaluacion:informe_validar' informe.pk %}" data-confirmar="¿Validar el informe? Ya no podrá editarse.">{% csrf_token %}
+        <button class="boton exito" type="submit">Validar</button></form>
+      <form class="enlinea" method="post" action="{% url 'evaluacion:informe_descartar' informe.pk %}" data-confirmar="¿Descartar este borrador?">{% csrf_token %}
+        <button class="boton peligro" type="submit">Descartar</button></form>
+    {% elif informe.estado == "validado" %}
+      <a class="boton" href="{% url 'evaluacion:informe_entregar' informe.pk %}">Registrar entrega presencial</a>
+    {% endif %}
+    <button class="boton secundario" type="button" data-imprimir>Imprimir</button>
+  </div>
+</div>
+.</div>
+{% endif %}
+{% if informe.tipo == "preliminar_fudei" %}<div class="aviso info">Versión preliminar de apoyo interno: el FUDEI oficial se completa en el formato vigente del Mineduc (RF-06).</div>{% endif %}
+<div class="tarjeta"><div class="texto-ia" style="border-style:solid;background:#fff">{{ informe.contenido }}</div></div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Alertas{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Alertas de riesgo</h1><p class="sub">Solo ve las alertas que reportó o que el reglamento le asigna.</p></div>
+  <div class="acciones">{% if "alerta.ver_constancias" in permisos %}<a class="boton secundario" href="{% url 'alertas:constancias' %}">Ver constancias</a>{% endif %}</div>
+</div>
+<form class="filtros" method="get"><select class="campo" name="estado" aria-label="Estado">
+  <option value="abiertas" {% if estado == "abiertas" %}selected{% endif %}>Abiertas</option>
+  {% for k, v in estados %}<option value="{{ k }}" {% if estado == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+  <option value="todas" {% if estado == "todas" %}selected{% endif %}>Todas</option></select>
+  <button class="boton secundario" type="submit">Filtrar</button></form>
+<div class="tarjeta tabla-scroll"><table class="tabla">
+  <thead><tr><th>N°</th><th>Tipo</th><th>Estudiante</th><th>Sede</th><th>Registro</th><th>Plazo denuncia</th><th>Estado</th></tr></thead><tbody>
+  {% for a in alertas %}<tr>
+    <td data-rotulo="N°"><a href="{% url 'alertas:detalle' a.pk %}">{{ a.pk }}</a>{% if a.pk in sin_leer %} <span class="insignia rojo">nueva</span>{% endif %}</td>
+    <td data-rotulo="Tipo">{{ a.get_tipo_situacion_display }}</td>
+    <td data-rotulo="Estudiante">{{ a.estudiante }}<br><small class="ayuda">{{ a.estudiante.curso }}</small></td>
+    <td data-rotulo="Sede">{{ a.sede }}</td>
+    <td data-rotulo="Registro" class="nowrap">{{ a.fecha_hora_registro|date:"d-m-Y H:i" }}</td>
+    <td data-rotulo="Plazo">{% if a.posible_delito %}{% if a.estado == "denunciada" %}<span class="insignia morado">denunciada</span>
+      {% elif a.plazo_denuncia < ahora %}<span class="insignia rojo">vencido</span>{% else %}{{ a.plazo_denuncia|date:"d-m H:i" }}{% endif %}{% else %}—{% endif %}</td>
+    <td data-rotulo="Estado"><span class="insignia {{ a.estado|color_estado }}">{{ a.get_estado_display }}</span></td></tr>
+  {% empty %}<tr><td colspan="7" class="vacio">No hay alertas.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Situación conductual{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>Situación conductual</h1><span class="contexto">Año escolar {{ filtros.anio }}{% if filtros.mes %} · {{ filtros.nombre_mes }}{% endif %}</span></div>
+<div class="kpis">{% for e, n in kpis %}<a class="kpi" href="{% url 'convivencia:situacion_detalle' %}{{ filtros.url }}&amp;categoria={% for c, t in categorias %}{% if t == e %}{{ c }}{% endif %}{% endfor %}"><span class="rotulo">{{ e }}</span><span class="valor">{{ n|miles }}</span><span class="detalle">registro{{ n|pluralize }}</span></a>{% endfor %}</div>
+<div class="tarjeta">
+  <div class="cabecera-tarjeta"><h2>Cursos con registros</h2>
+    <details class="menu-fila desplegable">
+      <summary class="boton secundario">{% icono "descargar" 16 %} Descargar</summary>
+      <div class="menu-flotante">
+        <a href="{% url 'convivencia:situacion_descargar' %}{{ filtros.url }}&amp;tipo=resumen">Resumen por curso</a>
+        <a href="{% url 'convivencia:situacion_descargar' %}{{ filtros.url }}&amp;tipo=detalle">Detalle de registros</a>
+        <a href="{% url 'convivencia:situacion_descargar' %}{{ filtros.url }}&amp;tipo=masiva">Descarga masiva (una hoja por curso)</a>
+      </div>
+    </details></div>
+  <table class="tabla v1">
+    <thead><tr><th>Curso</th>{% for c, t in categorias %}<th class="num">{{ t }}</th>{% endfor %}<th class="num">Total</th><th class="col-acciones"></th></tr></thead>
+    <tbody>
+    {% for f in filas %}<tr><td data-rotulo="Curso">{{ f.curso.nombre }}</td>{% for v in f.valores %}<td class="num" data-rotulo="{% cycle 'Conductual' 'Académica' 'Asistencia' 'Atrasos' %}">{{ v }}</td>{% endfor %}<td class="num" data-rotulo="Total"><strong>{{ f.total }}</strong></td>
+      <td class="col-acciones"><a href="{% url 'convivencia:situacion_detalle' %}?anio={{ filtros.anio }}{% if filtros.mes %}&amp;mes={{ filtros.mes }}{% endif %}&amp;curso={{ f.curso.pk }}">Ver detalle</a></td></tr>
+    {% empty %}<tr><td colspan="7" class="vacio">No hay registros en el periodo.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  <div class="nota-info gris" style="margin-top:14px">{% icono "info" 18 %}<p>Solo se muestran cursos con registros. Usa el filtro de curso para ver uno en particular.</p></div>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+sequenceDiagram
+    autonumber
+    actor U as Profesional
+    participant P as Plataforma (Django en AWS)
+    participant S as Capa de seudonimización
+    participant DB as RDS (cola cifrada y tabla de correspondencia)
+    participant A as Agente en el PC propio
+    participant O as Ollama + Gemma 2 9B (127.0.0.1)
+    U->>P: Solicita borrador (atenciones marcadas)
+    P->>P: Verifica permiso y consentimiento IA
+    P->>S: Texto de las atenciones y fragmentos normativos
+    S->>S: Seudonimiza y verifica
+    S->>DB: Guarda la solicitud seudonimizada y la tabla de correspondencia (cifradas)
+    P-->>U: «Solicitud en cola»
+    loop Cada 10 a 15 s
+        A->>P: POST /ia/agente/siguiente (HTTPS, token)
+    end
+    P-->>A: Texto seudonimizado de una solicitud (estado «en proceso»)
+    A->>O: /api/chat con el modelo stq-copiloto (Modelfile)
+    O-->>A: Borrador con marcadores
+    A->>P: POST /ia/agente/{id}/resultado
+    P->>S: Reidentifica con la tabla de correspondencia
+    S->>DB: Guarda el borrador cifrado (etiqueta IA) y elimina la tabla
+    P-->>U: Borrador listo para revisar (RF-18)
+    U->>P: Valida o descarta, con retroalimentación (RF-19)
+    Note over P,A: Si el agente no responde, la solicitud vuelve a la cola (hasta 3 intentos, máximo 24 h)

@@ -1,0 +1,19 @@
+{% if form.non_field_errors %}<div class="aviso error" role="alert">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+{% for campo in form.hidden_fields %}{{ campo }}{% endfor %}
+{% for campo in form.visible_fields %}
+<div class="grupo{% if campo.errors %} con-error{% endif %}{% if campo.widget_type == 'checkbox' %} grupo-casilla{% endif %}">
+  {% if campo.widget_type == 'checkbox' %}
+    {{ campo }}
+    <div>
+      <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+      {% if campo.help_text %}<small class="ayuda">{{ campo.help_text|safe }}</small>{% endif %}
+      {% for e in campo.errors %}<p class="error-campo" role="alert">{{ e }}</p>{% endfor %}
+    </div>
+  {% else %}
+    <label for="{{ campo.id_for_label }}">{{ campo.label }}{% if campo.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+    {{ campo }}
+    {% if campo.help_text %}<small class="ayuda">{{ campo.help_text|safe }}</small>{% endif %}
+    {% for e in campo.errors %}<p class="error-campo" role="alert">{{ e }}</p>{% endfor %}
+  {% endif %}
+</div>
+{% endfor %}

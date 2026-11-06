@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Avisos de reevaluación{% endblock %}
+{% block contenido %}
+<h1>Avisos de reevaluación</h1>
+<p class="sub">Generados por la tarea diaria para las NEE transitorias con reevaluación próxima o vencida (RF-08).</p>
+<div class="tarjeta tabla-scroll"><table class="tabla">
+  <thead><tr><th>Estudiante</th><th>Tipo de NEE</th><th>Fecha de reevaluación</th><th>Aviso enviado</th><th>Estado</th></tr></thead><tbody>
+  {% now "Y-m-d" as hoy %}
+  {% for a in avisos %}<tr>
+    <td data-rotulo="Estudiante"><a href="{% url 'evaluacion:detalle' a.evaluacion_id %}">{{ a.evaluacion.caso.estudiante }}</a></td>
+    <td data-rotulo="NEE">{{ a.evaluacion.tipo_nee }}</td>
+    <td data-rotulo="Reevaluación">{{ a.fecha_programada|date:"d-m-Y" }}{% if a.fecha_programada|date:"Y-m-d" < hoy %} <span class="insignia rojo">vencida</span>{% endif %}</td>
+    <td data-rotulo="Enviado" class="nowrap">{{ a.fecha_envio|date:"d-m-Y H:i"|default:"—" }}</td>
+    <td data-rotulo="Estado"><span class="insignia {{ a.estado|color_estado }}">{{ a.get_estado_display }}</span></td></tr>
+  {% empty %}<tr><td colspan="5" class="vacio">No hay avisos.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

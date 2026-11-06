@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block titulo %}{{ obj.nombre_completo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>{{ obj.nombre_completo }}</h1><p class="sub">{{ obj.correo }} · último acceso {{ obj.last_login|date:"d-m-Y H:i"|default:"—" }}</p></div>
+  <div class="acciones">
+    <a class="boton secundario" href="{% url 'cuentas:usuarios' %}">Volver</a>
+    {% if obj.mfa_activo %}
+    <form method="post" action="{% url 'cuentas:restablecer_2fa' obj.pk %}" class="enlinea" data-confirmar="¿Restablecer el segundo factor? El usuario deberá configurarlo de nuevo.">{% csrf_token %}
+      <button class="boton secundario" type="submit">Restablecer 2FA</button></form>{% endif %}
+  </div>
+</div>
+<div class="rejilla">
+  <div class="tarjeta">
+    <h2>Datos de la cuenta</h2>
+    <form method="post">{% csrf_token %}<input type="hidden" name="accion" value="editar">
+      {% with form=form_editar %}{% include "comun/_campos.html" %}{% endwith %}
+      <div class="pie-form"><button class="boton" type="submit">Guardar</button></div>
+    </form>
+  </div>
+  <div class="tarjeta">
+    <h2>Asignar rol</h2>
+    <form method="post">{% csrf_token %}<input type="hidden" name="accion" value="rol">
+      {% with form=form_rol %}{% include "comun/_campos.html" %}{% endwith %}
+      <div class="pie-form"><button class="boton" type="submit">Asignar</button></div>
+    </form>
+  </div>
+</div>
+<div class="tarjeta tabla-scroll">
+  <h2>Historial de roles</h2>
+  <table class="tabla">
+    <thead><tr><th>Rol</th><th>Sede</th><th>Desde</th><th>Hasta</th><th></th></tr></thead>
+    <tbody>
+    {% for a in asignaciones %}
+      <tr><td data-rotulo="Rol">{{ a.rol.nombre }}</td><td data-rotulo="Sede">{{ a.sede|default:"Todas" }}</td>
+        <td data-rotulo="Desde">{{ a.vigente_desde|date:"d-m-Y" }}</td><td data-rotulo="Hasta">{{ a.vigente_hasta|date:"d-m-Y"|default:"—" }}</td>
+        <td>{% if not a.vigente_hasta or a.vigente_hasta >= hoy %}
+          <form method="post" action="{% url 'cuentas:asignacion_finalizar' a.pk %}" data-confirmar="¿Finalizar este rol hoy?">{% csrf_token %}
+            <button class="boton peligro chico" type="submit">Finalizar</button></form>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="5" class="vacio">Sin roles asignados.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

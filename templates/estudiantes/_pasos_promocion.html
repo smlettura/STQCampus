@@ -1,0 +1,12 @@
+<div class="titulo-pagina"><h1>Promoción de fin de año</h1><span class="contexto">{% if proceso.procesado %}Procesado el {{ proceso.fecha_proceso|date:"d/m/Y" }}{% else %}Paso {{ paso }} de 3{% endif %}</span></div>
+<nav class="pasos-proceso" aria-label="Pasos de la promoción">
+  <a class="paso-p {% if paso == 1 %}actual{% elif paso > 1 or proceso.procesado %}hecho{% endif %}" href="{% url 'estudiantes:promocion' %}?anio={{ proceso.anio }}"{% if paso == 1 %} aria-current="step"{% endif %}>
+    <span class="numero">1</span><span><strong>Cursos terminales</strong><small>Definir quiénes egresan</small></span></a>
+  <span class="conector"></span>
+  <a class="paso-p {% if paso == 2 %}actual{% elif paso > 2 or proceso.procesado %}hecho{% endif %}" href="{% url 'estudiantes:promocion_revisar' %}?anio={{ proceso.anio }}"{% if paso == 2 %} aria-current="step"{% endif %}>
+    <span class="numero">2</span><span><strong>Revisar promoción</strong><small>Aprobados y repitentes</small></span></a>
+  <span class="conector"></span>
+  <a class="paso-p {% if paso == 3 %}actual{% elif proceso.procesado %}hecho{% endif %}" href="{% url 'estudiantes:promocion_procesar' %}?anio={{ proceso.anio }}"{% if paso == 3 %} aria-current="step"{% endif %}>
+    <span class="numero">3</span><span><strong>Procesar fin de año</strong><small>Mover estudiantes a {{ proceso.anio|add:1 }}</small></span></a>
+</nav>
+{% if proceso.procesado %}<div class="aviso info">El fin de año {{ proceso.anio }} ya fue procesado por {{ proceso.procesado_por }}: la promoción queda solo como registro.</div>{% endif %}

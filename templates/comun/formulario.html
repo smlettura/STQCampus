@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>{{ titulo }}</h1>{% if ayuda %}<p class="sub">{{ ayuda }}</p>{% endif %}</div></div>
+{% if advertencia %}<div class="aviso advertencia">{{ advertencia }}</div>{% endif %}
+<div class="tarjeta formulario">
+  <form method="post" {% if multipart %}enctype="multipart/form-data"{% endif %}>
+    {% csrf_token %}
+    {% include "comun/_campos.html" %}
+    <div class="pie-form">
+      <button type="submit" class="boton">{{ boton|default:"Guardar" }}</button>
+      {% if volver_url %}<a class="boton secundario" href="{{ volver_url }}">Cancelar</a>{% endif %}
+      <small class="ayuda">Los campos con <span class="req">*</span> son obligatorios.</small>
+    </div>
+  </form>
+</div>
+{% endblock %}

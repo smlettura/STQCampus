@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Detalle de situación conductual{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><div><h1>Detalle de registros</h1><p class="sub">{% if filtros.curso %}{{ filtros.curso.nombre }} · {% endif %}{{ filtros.anio }}{% if filtros.mes %} · {{ filtros.nombre_mes }}{% endif %}</p></div>
+  <a class="boton secundario" href="{% url 'convivencia:situacion' %}{{ filtros.url }}">Volver al resumen</a></div>
+<div class="tarjeta">
+  <div class="barra-tabla">
+    <nav class="pestanas"><a href="{% url_con categoria='' %}" class="{% if not categoria %}activo{% endif %}">Todas</a>
+      {% for c, t in categorias %}<a href="{% url_con categoria=c %}" class="{% if categoria == c %}activo{% endif %}">{{ t }}</a>{% endfor %}</nav>
+    <span class="espacio"></span>
+    <a class="boton secundario" href="{% url 'convivencia:situacion_descargar' %}{{ filtros.url }}&amp;tipo=detalle">{% icono "descargar" 16 %} Descargar</a>
+  </div>
+  <div class="tabla-scroll">
+  <table class="tabla v1"><thead><tr><th>Fecha</th><th>Estudiante</th><th>Curso</th><th>Categoría</th><th>Descripción</th><th>Registró</th></tr></thead><tbody>
+  {% for r in pagina %}<tr><td class="nowrap" data-rotulo="Fecha">{{ r.fecha|date:"d/m/Y" }}</td>
+    <td data-rotulo="Estudiante">{% if "estudiante.ver_todos" in permisos %}<a href="{% url 'estudiantes:detalle' r.estudiante_id %}">{{ r.estudiante.nombre_lista }}</a>{% else %}{{ r.estudiante.nombre_lista }}{% endif %}</td>
+    <td data-rotulo="Curso">{{ r.estudiante.curso.nombre }}</td>
+    <td data-rotulo="Categoría">{{ r.get_categoria_display }}{% if r.porcentaje_asistencia is not None %} <span class="insignia {% if r.porcentaje_asistencia < 50 %}rojo{% elif r.porcentaje_asistencia < 85 %}naranjo{% elif r.porcentaje_asistencia < 90 %}ambar{% else %}verde{% endif %}">{{ r.porcentaje_asistencia|pct }}</span>{% endif %}</td>
+    <td data-rotulo="Descripción">{{ r.descripcion }}</td><td data-rotulo="Registró">{{ r.registrado_por }}</td></tr>
+  {% empty %}<tr><td colspan="6" class="vacio">No hay registros con estos filtros.</td></tr>{% endfor %}
+  </tbody></table>
+  </div>
+  {% include "comun/_pie_tabla.html" %}
+</div>
+{% endblock %}

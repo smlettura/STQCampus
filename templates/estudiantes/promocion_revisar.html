@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Revisar promoción{% endblock %}
+{% block contenido %}
+{% include "estudiantes/_pasos_promocion.html" %}
+<form method="post">
+{% csrf_token %}
+<div class="pantalla-form">
+  <div>
+    {% for g in grupos %}
+    <section class="tarjeta">
+      <div class="cabecera-tarjeta"><h2>{{ g.curso.nombre }}</h2>
+        <span class="total">{% if g.terminal %}<span class="insignia">EGRESA</span>{% else %}pasa a {{ g.curso.nombre_nivel_siguiente|default:"—" }} {{ g.curso.letra }}{% endif %} · <strong>{{ g.estudiantes|length }}</strong> estudiantes</span></div>
+      <table class="tabla v1"><thead><tr><th>Estudiante</th><th>RUT</th><th>Repite</th></tr></thead><tbody>
+      {% for e in g.estudiantes %}<tr>
+        <td data-rotulo="Estudiante">{{ e.nombre_lista }}</td><td data-rotulo="RUT" class="nowrap">{{ e.rut|rut }}</td>
+        <td data-rotulo="Repite"><label class="grupo-casilla"><input type="checkbox" name="repite" value="{{ e.pk }}" {% if e.pk in marcados %}checked{% endif %} {% if proceso.procesado %}disabled{% endif %}> <span class="oculto-accesible">Repite</span></label></td>
+      </tr>{% endfor %}
+      </tbody></table>
+    </section>
+    {% empty %}
+    <div class="tarjeta estado-vacio"><h2>No hay estudiantes activos en {{ proceso.anio }}</h2></div>
+    {% endfor %}
+  </div>
+  <aside>
+    <div class="tarjeta panel-resumen">
+      <h2>Revisión</h2>
+      <p class="ayuda" style="margin-top:0">Todos los estudiantes activos quedan <strong>promovidos</strong> (o egresan, si su curso es terminal), salvo los marcados como <strong>repitentes</strong>, que seguirán en el mismo nivel el próximo año.</p>
+      {% if not proceso.procesado %}
+      <button class="boton" type="submit" name="accion" value="continuar">Guardar y continuar</button>
+      <button class="boton secundario" type="submit" name="accion" value="borrador">Guardar borrador</button>
+      {% endif %}
+    </div>
+  </aside>
+</div>
+</form>
+{% endblock %}

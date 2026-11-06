@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}{% if e %}Editar estudiante{% else %}Registrar estudiante{% endif %}{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>{% if e %}Editar datos de {{ e }}{% else %}Registrar estudiante{% endif %}</h1>
+  <span class="contexto">Los campos con <span class="req">*</span> son obligatorios</span></div>
+{% if form.non_field_errors %}<div class="aviso error" role="alert">{% for x in form.non_field_errors %}<div>{{ x }}</div>{% endfor %}</div>{% endif %}
+<form method="post" id="form-estudiante" novalidate>
+{% csrf_token %}
+<div class="pantalla-form">
+  <div>
+    <section class="tarjeta">
+      <div class="paso"><span class="numero">1</span><div><h2>Información personal</h2><p>Datos de identificación del estudiante.</p></div></div>
+      <div class="campos">
+        {% include "comun/_campo.html" with campo=form.rut %}
+        {% include "comun/_campo.html" with campo=form.fecha_nacimiento %}
+        {% include "comun/_campo.html" with campo=form.nombre_social %}
+        {% include "comun/_campo.html" with campo=form.primer_nombre %}
+        {% include "comun/_campo.html" with campo=form.segundo_nombre %}
+        <div></div>
+        {% include "comun/_campo.html" with campo=form.apellido_paterno %}
+        {% include "comun/_campo.html" with campo=form.apellido_materno %}
+      </div>
+    </section>
+    <section class="tarjeta">
+      <div class="paso"><span class="numero">2</span><div><h2>Datos académicos</h2><p>Curso y programas de apoyo.</p></div></div>
+      <div class="campos">
+        {% include "comun/_campo.html" with campo=form.curso %}
+        {% include "comun/_campo.html" with campo=form.fecha_ingreso %}
+        <div class="grupo{% if form.en_pie.errors or form.prioritario.errors %} con-error{% endif %}">
+          <span class="rotulo-grupo">Programas</span>
+          <div class="opciones">
+            <label class="opcion" for="{{ form.en_pie.id_for_label }}">{{ form.en_pie }} PIE</label>
+            <label class="opcion" for="{{ form.prioritario.id_for_label }}">{{ form.prioritario }} Prioritario</label>
+          </div>
+          {% for x in form.en_pie.errors %}<p class="error-campo" role="alert">{{ x }}</p>{% endfor %}
+        </div>
+        {% include "comun/_campo.html" with campo=form.necesidad_educativa %}
+        <div class="grupo grupo-casilla" style="align-self:end">{{ form.matricula_condicional }}<div><label for="{{ form.matricula_condicional.id_for_label }}">Matrícula condicional</label></div></div>
+      </div>
+    </section>
+    {% if form_apo %}
+    <section class="tarjeta">
+      <div class="paso"><span class="numero">3</span><div><h2>Apoderado</h2><p>Contacto principal para comunicaciones.</p></div></div>
+      {% if form_apo.non_field_errors %}<div class="aviso error">{% for x in form_apo.non_field_errors %}<div>{{ x }}</div>{% endfor %}</div>{% endif %}
+      <div class="campos">
+        {% include "comun/_campo.html" with campo=form_apo.nombre_completo %}
+        {% include "comun/_campo.html" with campo=form_apo.telefono %}
+        {% include "comun/_campo.html" with campo=form_apo.correo %}
+        {% include "comun/_campo.html" with campo=form_apo.parentesco %}
+      </div>
+      <small class="ayuda">Podrá agregar más apoderados, y su RUT, desde la ficha del estudiante.</small>
+    </section>
+    {% endif %}
+  </div>
+  <aside>
+    <div class="tarjeta panel-resumen" data-resumen-form="form-estudiante">
+      <h2>Resumen</h2>
+      <dl>
+        <dt>Información personal</dt><dd data-seccion data-contar data-campos="rut fecha_nacimiento primer_nombre apellido_paterno apellido_materno">—</dd>
+        <dt>Datos académicos</dt><dd data-seccion data-contar data-campos="curso">—</dd>
+        {% if form_apo %}<dt>Apoderado</dt><dd>Opcional</dd>{% endif %}
+      </dl>
+      <button type="submit" class="boton">{% if e %}Guardar cambios{% else %}Guardar estudiante{% endif %}</button>
+      <a class="boton secundario" href="{{ volver_url }}">Cancelar</a>
+    </div>
+    {% if not e and "estudiante.importar" in permisos %}
+    <div class="tarjeta nota-info" style="margin-top:12px">{% icono "info" 18 %}
+      <div><strong>¿Muchos estudiantes?</strong><p>Súbelos de una vez con una planilla Excel.</p>
+        <a href="{% url 'estudiantes:importar' %}">Importación masiva →</a></div></div>
+    {% endif %}
+  </aside>
+</div>
+</form>
+{% endblock %}

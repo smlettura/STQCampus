@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Estudiantes{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>Estudiantes</h1><span class="contexto">Año escolar {{ filtros.anio }}</span></div>
+
+<div class="kpis">
+  <div class="kpi"><span class="rotulo">Total estudiantes</span><span class="valor">{{ kpi.total|miles }}</span><span class="detalle">matriculados</span></div>
+  <div class="kpi"><span class="rotulo">Activos</span><span class="valor">{{ kpi.activos|miles }}</span><span class="detalle">{{ kpi.pct_activos|pct }} del total</span></div>
+  <div class="kpi"><span class="rotulo">Inactivos</span><span class="valor">{{ kpi.inactivos|miles }}</span><span class="detalle">retirados</span></div>
+  <div class="kpi"><span class="rotulo">Tasa de retiro</span><span class="valor{% if kpi.inactivos %} rojo{% endif %}">{{ kpi.tasa_retiro|pct }}</span><span class="detalle">{{ kpi.inactivos }} estudiante{{ kpi.inactivos|pluralize }}</span></div>
+  <div class="kpi"><span class="rotulo">Tasa de repitencia</span><span class="valor">{{ kpi.tasa_repitencia|pct }}</span><span class="detalle">{{ kpi.repitentes }} estudiante{{ kpi.repitentes|pluralize }}</span></div>
+  <div class="kpi"><span class="rotulo">Cursos</span><span class="valor">{{ kpi.cursos }}</span><span class="detalle">{{ kpi.rango_cursos|default:"sin cursos" }}</span></div>
+</div>
+
+<div class="tarjeta">
+  <form id="form-lista" method="get" action="{% url 'estudiantes:exportar' %}"></form>
+  <div class="barra-tabla">
+    <nav class="pestanas" aria-label="Estado">
+      <a href="{% url_con estado='' %}" class="{% if estado == 'todos' %}activo{% endif %}">Todos <span class="n">{{ conteo.todos|miles }}</span></a>
+      <a href="{% url_con estado='activos' %}" class="{% if estado == 'activos' %}activo{% endif %}">Activos <span class="n">{{ conteo.activos|miles }}</span></a>
+      <a href="{% url_con estado='inactivos' %}" class="{% if estado == 'inactivos' %}activo{% endif %}">Inactivos <span class="n">{{ conteo.inactivos|miles }}</span></a>
+    </nav>
+    <form class="filtro-texto" method="get" role="search">
+      {% icono "buscar" 16 %}
+      {% for k, v in request.GET.items %}{% if k != "q" and k != "pagina" and k != "ir" %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+      <input type="search" name="q" value="{{ q }}" placeholder="Filtrar esta tabla" aria-label="Filtrar por nombre o RUT">
+    </form>
+    {% if "estudiante.importar" in permisos %}
+    <a class="boton secundario" href="{% url 'estudiantes:importar' %}">Importar Excel</a>
+    {% for k, v in request.GET.items %}{% if k != "pagina" and k != "q" and k != "ir" %}<input form="form-lista" type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+    <button class="boton secundario" type="submit" form="form-lista" title="Exporta los seleccionados o, si no hay selección, toda la lista filtrada">Exportar</button>
+    {% endif %}
+  </div>
+  <div class="tabla-scroll">
+  <table class="tabla v1">
+    <thead><tr>
+      {% if "estudiante.importar" in permisos %}<th class="col-check"><input type="checkbox" data-seleccionar-todos="ids" aria-label="Seleccionar todos"></th>{% endif %}
+      <th>N°</th><th>Estudiante ↑</th><th>RUT</th><th>Curso</th><th>Programa</th><th>Estado</th><th class="col-acciones">Acciones</th></tr></thead>
+    <tbody>
+    {% for e in pagina %}
+    <tr>
+      {% if "estudiante.importar" in permisos %}<td class="col-check"><input type="checkbox" name="ids" value="{{ e.pk }}" form="form-lista" aria-label="Seleccionar {{ e }}"></td>{% endif %}
+      <td class="num-fila">{{ forloop.counter0|add:inicio|stringformat:"02d" }}</td>
+      <td data-rotulo="Estudiante"><a href="{% url 'estudiantes:detalle' e.pk %}" style="color:var(--texto);font-weight:600">{{ e.nombres }} {{ e.apellidos }}</a>
+        {% if e.nombre_social %}<span class="sub-celda">Nombre social: {{ e.nombre_social }}</span>{% endif %}</td>
+      <td data-rotulo="RUT" class="nowrap">{{ e.rut|rut }}</td>
+      <td data-rotulo="Curso">{{ e.curso.nombre }}</td>
+      <td data-rotulo="Programa">{% if e.en_pie %}<span class="insignia">PIE</span>{% endif %}{% if e.prioritario %} <span class="insignia ambar">PRIORITARIO</span>{% endif %}{% if not e.en_pie and not e.prioritario %}—{% endif %}</td>
+      <td data-rotulo="Estado"><span class="estado {{ e.estado|color_estado }}">{{ e.get_estado_display }}</span></td>
+      <td class="col-acciones"><div class="acciones-fila">
+        <a class="boton contorno" href="{% url 'estudiantes:detalle' e.pk %}">Ver ficha</a>
+        <details class="menu-fila">
+          <summary class="boton-icono sin-borde" aria-label="Más acciones">{% icono "puntos" 18 %}</summary>
+          <div class="menu-flotante">
+            {% if "estudiante.gestionar" in permisos %}<a href="{% url 'estudiantes:editar' e.pk %}">Editar datos</a>{% endif %}
+            {% if "caso.gestionar" in permisos and e.activo %}<a href="{% url 'casos:registrar_atencion' %}?estudiante={{ e.pk }}">Registrar atención</a>{% endif %}
+            {% if "ia.usar" in permisos %}<a href="{% url 'ia:generar_informe' %}?estudiante={{ e.pk }}">{% icono "chispa" 15 %} Generar informe</a>{% endif %}
+            <a href="{% url 'estudiantes:ficha_pdf' e.pk %}">Descargar ficha PDF</a>
+            {% if "estudiante.gestionar" in permisos and e.activo %}<hr><a class="peligro" href="{% url 'estudiantes:inactivar' e.pk %}">Marcar como inactivo</a>{% endif %}
+          </div>
+        </details>
+      </div></td>
+    </tr>
+    {% empty %}<tr><td colspan="8" class="vacio">No hay estudiantes que coincidan con los filtros.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% include "comun/_pie_tabla.html" %}
+</div>
+{% endblock %}

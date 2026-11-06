@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Egresados{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>Egresados</h1><span class="contexto">{{ pagina.paginator.count|miles }} egresado{{ pagina.paginator.count|pluralize }}</span></div>
+<div class="kpis">
+  <div class="kpi"><span class="rotulo">Egresados registrados</span><span class="valor">{{ total|miles }}</span><span class="detalle">todos los años</span></div>
+  <div class="kpi"><span class="rotulo">Último proceso de fin de año</span><span class="valor">{% if ultimo %}{{ ultimo.anio }}{% else %}—{% endif %}</span><span class="detalle">{% if ultimo %}procesado el {{ ultimo.fecha_proceso|date:"d/m/Y" }}{% else %}sin procesar{% endif %}</span></div>
+  <div class="kpi"><span class="rotulo">Cursos terminales {{ anio_actual }}</span><span class="valor">{{ terminales_actuales|length|default:"—" }}</span><span class="detalle">{% for c in terminales_actuales %}{{ c.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}pendiente de configurar{% endfor %}</span></div>
+</div>
+{% if pagina.paginator.count %}
+<div class="tarjeta">
+  <table class="tabla v1">
+    <thead><tr><th>Estudiante</th><th>RUT</th><th>Curso de egreso</th><th>Fecha de egreso</th><th class="col-acciones"></th></tr></thead>
+    <tbody>
+    {% for e in pagina %}<tr>
+      <td data-rotulo="Estudiante">{{ e.nombre_lista }}</td><td data-rotulo="RUT" class="nowrap">{{ e.rut|rut }}</td>
+      <td data-rotulo="Curso">{{ e.curso.nombre }} {{ e.curso.anio_escolar }}</td><td data-rotulo="Egreso" class="nowrap">{{ e.fecha_egreso|date:"d/m/Y" }}</td>
+      <td class="col-acciones"><a class="boton contorno" href="{% url 'estudiantes:detalle' e.pk %}">Ver ficha</a></td>
+    </tr>{% endfor %}
+    </tbody>
+  </table>
+  {% include "comun/_pie_tabla.html" %}
+</div>
+{% else %}
+<div class="tarjeta estado-vacio">
+  <h2>Aún no hay egresados</h2>
+  <p>Los egresados aparecen aquí cuando se procesa el fin de año en Promoción. Primero hay que definir qué cursos egresan.</p>
+  {% if "promocion.gestionar" in permisos %}<a class="boton" href="{% url 'estudiantes:promocion' %}">Ir a Promoción</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

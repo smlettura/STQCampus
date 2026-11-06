@@ -1,0 +1,25 @@
+{
+  // Configuraciones de ejecución para Visual Studio Code (F5). Requieren la extensión «Python» de Microsoft
+  // y el intérprete del entorno virtual .venv seleccionado (Ctrl+Shift+P → «Python: Select Interpreter»).
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Plataforma: ejecutar servidor",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/manage.py",
+      "args": ["runserver"],
+      "django": true,
+      "justMyCode": true
+    },
+    {
+      "name": "Plataforma: pruebas automáticas",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/manage.py",
+      "args": ["test", "tests"],
+      "django": true,
+      "justMyCode": true
+    }
+  ]
+}

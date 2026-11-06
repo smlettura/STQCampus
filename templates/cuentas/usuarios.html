@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titulo %}Usuarios y roles{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Usuarios y roles</h1><p class="sub">Un usuario puede ejercer más de un rol (RF-09). El administrador no accede a contenido clínico.</p></div>
+  <div class="acciones"><a class="boton" href="{% url 'cuentas:usuario_crear' %}">Nuevo usuario</a></div>
+</div>
+<form class="filtros" method="get"><input class="campo" type="search" name="q" value="{{ q }}" placeholder="Nombre o correo">
+  <button class="boton secundario" type="submit">Buscar</button></form>
+<div class="tarjeta tabla-scroll">
+<table class="tabla">
+  <thead><tr><th>Nombre</th><th>Correo</th><th>Roles vigentes</th><th>2FA</th><th>Estado</th></tr></thead>
+  <tbody>
+  {% for u in usuarios %}
+    <tr>
+      <td data-rotulo="Nombre"><a href="{% url 'cuentas:usuario' u.pk %}">{{ u.nombre_completo }}</a></td>
+      <td data-rotulo="Correo">{{ u.correo }}</td>
+      <td data-rotulo="Roles">{% for a in u.asignaciones.all %}{% if not a.vigente_hasta or a.vigente_hasta >= hoy %}<span class="insignia">{{ a.rol.nombre }}{% if a.sede %} · {{ a.sede }}{% endif %}</span> {% endif %}{% endfor %}</td>
+      <td data-rotulo="2FA">{% if u.mfa_activo %}<span class="insignia verde">sí</span>{% else %}<span class="insignia gris">no</span>{% endif %}</td>
+      <td data-rotulo="Estado">{% if u.activo %}<span class="insignia verde">activo</span>{% else %}<span class="insignia gris">inactivo</span>{% endif %}</td>
+    </tr>
+  {% empty %}<tr><td colspan="5" class="vacio">No hay usuarios.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

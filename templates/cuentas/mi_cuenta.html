@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Mi perfil{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>Mi perfil</h1></div>
+<div class="rejilla-2">
+  <div>
+    <div class="tarjeta">
+      <div class="perfil-cabecera">
+        <span class="avatar" aria-hidden="true">{{ u.iniciales }}</span>
+        <div class="quien-es"><h2>{{ u.nombre_completo }}</h2><p>{{ u.correo }}</p></div>
+        <div class="acciones">{% for a in roles_usuario %}<span class="insignia">{{ a.rol.nombre|upper }}{% if a.sede %} · {{ a.sede }}{% endif %}</span>{% empty %}<span class="insignia gris">SIN ROL</span>{% endfor %}</div>
+      </div>
+    </div>
+    <div class="tarjeta">
+      <h2>Información de la cuenta</h2>
+      <div class="celdas">
+        <div class="celda"><small>Usuario</small><strong>{{ u.correo }}</strong></div>
+        <div class="celda"><small>Estado</small><strong><span class="estado {% if u.activo %}verde{% else %}gris{% endif %}">{% if u.activo %}Activo{% else %}Inactivo{% endif %}</span></strong></div>
+        <div class="celda"><small>Fecha de ingreso</small><strong>{{ u.fecha_alta|date:"j \d\e F \d\e Y" }}</strong></div>
+        <div class="celda"><small>Teléfono</small><strong>{{ u.telefono|default:"Sin registrar" }}</strong></div>
+        <div class="celda"><small>Especialidad o área</small><strong>{{ u.especialidad|default:"Sin registrar" }}</strong></div>
+        <div class="celda"><small>Primer ingreso pendiente</small><strong>{% if u.cambio_contrasena_pendiente %}Sí{% else %}No{% endif %}</strong></div>
+      </div>
+      <div class="pie-form" style="justify-content:flex-end;border-top:none;padding-top:0">
+        <a class="boton secundario" href="{% url 'cuentas:perfil_editar' %}">Actualizar información</a></div>
+    </div>
+  </div>
+  <div>
+    <div class="tarjeta">
+      <h2>Seguridad</h2>
+      <div class="caja-seguridad">{% icono "candado" 20 %}
+        <div><strong>Último cambio de contraseña</strong><span>{{ u.contrasena_actualizada|date:"d/m/Y H:i"|default:"Sin registro" }}</span></div></div>
+      <div class="caja-seguridad">{% icono "admin" 20 %}
+        <div><strong>Segundo factor</strong><span>{% if u.mfa_activo %}Activo{% else %}No configurado{% endif %} · último acceso {{ u.last_login|date:"d/m/Y H:i"|default:"—" }}</span></div></div>
+      <a class="boton" style="width:100%;height:40px" href="{% url 'cuentas:cambiar_contrasena' %}">Cambiar contraseña</a>
+      <hr style="border:none;border-top:1px solid var(--linea);margin:14px 0">
+      <form method="post" action="{% url 'cuentas:salir' %}">{% csrf_token %}
+        <button type="submit" class="boton contorno-rojo">Cerrar sesión</button></form>
+    </div>
+  </div>
+</div>
+{% endblock %}
