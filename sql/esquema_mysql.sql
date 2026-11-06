@@ -771,3 +771,13 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON `bienestar`.`sesion_seguimiento` TO 'bie
 GRANT SELECT, INSERT, UPDATE, DELETE ON `bienestar`.`solicitud_arco` TO 'bienestar_app'@'%';
 GRANT SELECT, INSERT, UPDATE, DELETE ON `bienestar`.`usuario` TO 'bienestar_app'@'%';
 GRANT SELECT, INSERT, UPDATE, DELETE ON `bienestar`.`usuario_rol` TO 'bienestar_app'@'%';
+
+-- Caché compartida entre los trabajadores de Gunicorn (antirrepetición del segundo factor y bloqueos por intentos).
+-- La crea la migración core.0002_cache_compartida (createcachetable); no es una tabla del modelo de datos.
+CREATE TABLE `cache_compartida` (
+  `cache_key` varchar(255) NOT NULL,
+  `value` longtext NOT NULL,
+  `expires` datetime(6) NOT NULL,
+  PRIMARY KEY (`cache_key`),
+  KEY `cache_compartida_expires` (`expires`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

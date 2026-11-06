@@ -24,19 +24,25 @@ CloudFront negocia con el origen como máximo **TLSv1.2** (valores admitidos: SS
 
 ## Pasos
 
+La guía completa, con capturas de los valores de cada pantalla, está en «Guia_Despliegue_AWS_us-east-1.docx».
+Resumen:
+
 1. Crear el secreto JSON `stq/produccion` en Secrets Manager con: DJANGO_SECRET_KEY, CIFRADO_CLAVES, DB_HOST, DB_NAME,
-   DB_USER, DB_PASSWORD, DB_MIGRA_USER, DB_MIGRA_PASSWORD, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD,
-   DJANGO_ALLOWED_HOSTS (`plataforma.<dominio>,origen.<dominio>`), DJANGO_CSRF_TRUSTED_ORIGINS
-   (`https://plataforma.<dominio>`), URL_PLATAFORMA, AWS_KMS_KEY_ID y CLAVE_ORIGEN (valor aleatorio largo).
+   DB_USER, DB_PASSWORD, DB_MIGRA_USER, DB_MIGRA_PASSWORD, EMAIL_BACKEND, EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER,
+   EMAIL_HOST_PASSWORD, EMAIL_USE_TLS, DEFAULT_FROM_EMAIL, DJANGO_ALLOWED_HOSTS (`plataforma.<dominio>,origen.<dominio>`),
+   DJANGO_CSRF_TRUSTED_ORIGINS (`https://plataforma.<dominio>`), URL_PLATAFORMA, AWS_KMS_KEY_ID y CLAVE_ORIGEN.
 2. Asignar a la instancia el rol de IAM con `iam_politica_instancia.json` (reemplace `<cuenta>`, `<arn-llave-kms>`
-   e `<id-zona>`).
+   e `<id-zona>`). En los metadatos de la instancia, IMDSv2 con límite de saltos 2 (los contenedores lo necesitan).
 3. Grupo de seguridad de la instancia: entrada 443 solo desde la lista de prefijos administrada
-   `com.amazonaws.global.cloudfront.origin-facing`; sin 22 ni 8000.
-4. Construir y publicar la imagen ARM en Amazon ECR (desde un equipo con Docker Buildx):
-   `docker buildx build --platform linux/arm64,linux/amd64 -t <cuenta>.dkr.ecr.us-east-1.amazonaws.com/stq-app:1.1 --push .`
-5. En la instancia (por Session Manager), con Docker y su complemento compose:
-   `IMAGEN=… DOMINIO_ORIGEN=origen.<dominio> CORREO_ACME=… ./iniciar.sh`
-6. CloudFront: origen `origen.<dominio>`, protocolo «solo HTTPS», TLSv1.2, encabezado personalizado `X-Origen-STQ`
-   con el valor de CLAVE_ORIGEN; comportamiento con «Redirigir HTTP a HTTPS», sin caché para las páginas dinámicas
-   (política CachingDisabled) y con la política de solicitud al origen AllViewerExceptHostHeader.
-7. Crear las tareas programadas con `programar_tareas.sh`.
+   `com.amazonaws.global.cloudfront.origin-facing`; sin 22, 80 ni 8000.
+4. En la instancia (por Session Manager): `sudo sh deploy/aws/preparar_instancia.sh` (Docker, compose, git y swap).
+5. Crear la base y los usuarios en RDS: `RDS_HOST=<endpoint> sh deploy/aws/crear_bd_rds.sh`.
+6. Levantar los servicios: `DOMINIO_ORIGEN=origen.<dominio> CORREO_ACME=<correo> sh deploy/aws/iniciar.sh`
+   (construye la imagen en la propia instancia ARM; con `IMAGEN=…` usa una imagen publicada en ECR).
+7. Crear la cuenta de administrador: `docker exec -it stq-app python manage.py createsuperuser`.
+8. CloudFront: origen `origen.<dominio>`, protocolo «solo HTTPS», TLSv1.2, encabezado personalizado `X-Origen-STQ`
+   con el valor de CLAVE_ORIGEN; comportamiento con «Redirigir HTTP a HTTPS», métodos GET a DELETE, política de caché
+   CachingDisabled y política de solicitud al origen AllViewerExceptHostHeader; certificado de ACM para
+   `plataforma.<dominio>` (en us-east-1).
+9. Crear las tareas programadas con `programar_tareas.sh`.
+10. Comprobar: `PUBLICO=plataforma.<dominio> ORIGEN=origen.<dominio> sh deploy/aws/verificar_despliegue.sh`.

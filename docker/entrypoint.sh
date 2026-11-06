@@ -10,9 +10,11 @@ import os, sys, time
 import pymysql
 for intento in range(60):
     try:
+        # Con DB_SSL_CA (Amazon RDS) la espera también usa TLS: RDS puede exigir conexiones cifradas.
+        tls = {"ssl": {"ca": os.environ["DB_SSL_CA"]}} if os.environ.get("DB_SSL_CA") else {}
         pymysql.connect(host=os.environ["DB_HOST"], port=int(os.environ.get("DB_PORT", "3306")),
                         user=os.environ["DB_MIGRA_USER"], password=os.environ["DB_MIGRA_PASSWORD"],
-                        database=os.environ.get("DB_NAME", "bienestar")).close()
+                        database=os.environ.get("DB_NAME", "bienestar"), **tls).close()
         sys.exit(0)
     except Exception:
         time.sleep(2)
@@ -20,6 +22,8 @@ sys.exit("MySQL no respondió a tiempo.")
 PY
   echo "Migrando con el usuario propietario del esquema..."
   DB_USER="$DB_MIGRA_USER" DB_PASSWORD="$DB_MIGRA_PASSWORD" python manage.py migrate --noinput
+  # Se conecta como propietario del esquema y otorga los permisos al usuario de la aplicación ($DB_USER original).
+  # shellcheck disable=SC2097,SC2098
   DB_USER="$DB_MIGRA_USER" DB_PASSWORD="$DB_MIGRA_PASSWORD" python manage.py permisos_bd --aplicar --usuario "$DB_USER"
 else
   python manage.py migrate --noinput

@@ -22,7 +22,7 @@ services:
     mem_limit: 1g
     logging:
       driver: awslogs
-      options: {awslogs-region: "${AWS_REGION:-us-east-1}", awslogs-group: /stq/app}
+      options: {awslogs-region: "${AWS_REGION:-us-east-1}", awslogs-group: /stq/app, awslogs-create-group: "true"}
 
   proxy:
     image: nginx:1.27-alpine
@@ -41,7 +41,7 @@ services:
     mem_limit: 128m
     logging:
       driver: awslogs
-      options: {awslogs-region: "${AWS_REGION:-us-east-1}", awslogs-group: /stq/proxy}
+      options: {awslogs-region: "${AWS_REGION:-us-east-1}", awslogs-group: /stq/proxy, awslogs-create-group: "true"}
 
   certificados:
     # Emite y renueva el certificado del origen con el desafío DNS-01 en Route 53 (no requiere abrir el puerto 80).
