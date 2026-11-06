@@ -1,4 +1,8 @@
 # Imagen de la aplicación (la misma que se ejecuta en EC2 con Docker en AWS).
+# Multiarquitectura: python:3.12-slim publica linux/amd64 y linux/arm64, y todas las dependencias tienen ruedas para
+# aarch64 o son Python puro (sin compilador). Producción (t4g.small, ARM):
+#   docker buildx build --platform linux/arm64,linux/amd64 -t <cuenta>.dkr.ecr.us-east-1.amazonaws.com/stq-app:1.1 --push .
+# Desarrollo (docker compose) sigue usando la arquitectura del equipo.
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

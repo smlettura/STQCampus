@@ -33,5 +33,9 @@ fi
 
 python manage.py collectstatic --noinput
 
+# t4g.small (2 vCPU, 2 GiB): 3 trabajadores (medidos en local en unos 77 MB cada uno en reposo). Se reciclan cada
+# 1000 solicitudes para acotar el crecimiento de memoria. --forwarded-allow-ips="*" es seguro porque el puerto 8000
+# no se publica: solo lo alcanza el proxy nginx por la red interna de Docker.
 exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers "${GUNICORN_WORKERS:-3}" \
+  --max-requests 1000 --max-requests-jitter 100 --worker-tmp-dir /dev/shm --timeout 60 \
   --access-logfile - --forwarded-allow-ips="*"
