@@ -272,7 +272,12 @@ RECORDAR_CORREO_DIAS = 30                  # «Recordarme» guarda solo el corre
 # Los mensajes de confirmación pueden nombrar a un estudiante: se guardan en la sesión (servidor), no en una cookie.
 MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
-CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "bienestar"}}
+# Caché compartida en la base de datos. La guardan el bloqueo por intentos fallidos de ingreso y de segundo factor, y
+# la antirrepetición de los códigos TOTP. Una caché en memoria es propia de cada proceso: con varios trabajadores de
+# Gunicorn, un mismo código TOTP podría aceptarse una vez en cada trabajador. La tabla la crea la migración
+# core.0002_cache_compartida (comando createcachetable).
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.db.DatabaseCache", "LOCATION": "cache_compartida",
+                      "TIMEOUT": 300, "OPTIONS": {"MAX_ENTRIES": 5000}}}
 
 # ------------------------------------------------------------------ correo
 EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
