@@ -1,11 +1,25 @@
 #!/bin/sh
-# Arranque del contenedor en EC2. Los secretos se leen de Secrets Manager con el rol de IAM de la instancia.
+# Arranque en la EC2 (por Session Manager; sin SSH). Requiere Docker con el complemento compose y la AWS CLI.
+# Los secretos de la aplicación se leen de Secrets Manager con el rol de IAM de la instancia.
 set -e
-IMAGEN="${IMAGEN:?Defina IMAGEN, por ejemplo <cuenta>.dkr.ecr.sa-east-1.amazonaws.com/stq-app:1.0}"
-docker rm -f stq-app 2>/dev/null || true
-docker run -d --name stq-app --restart unless-stopped -p 8000:8000 \
-  -e DJANGO_DEBUG=0 -e AWS_REGION=sa-east-1 -e AWS_SECRETS_ID=stq/produccion \
-  -e DB_ENGINE=mysql -e DB_SSL_CA=/app/certs/rds-global-bundle.pem \
-  -e ALMACENAMIENTO=s3 -e AWS_S3_ADJUNTOS=stq-adjuntos -e AWS_S3_BITACORA=stq-bitacora-inmutable \
-  --log-driver awslogs --log-opt awslogs-region=sa-east-1 --log-opt awslogs-group=/stq/app \
-  "$IMAGEN"
+cd "$(dirname "$0")"
+export AWS_REGION="${AWS_REGION:-us-east-1}"
+export AWS_SECRETS_ID="${AWS_SECRETS_ID:-stq/produccion}"
+: "${IMAGEN:?Defina IMAGEN, por ejemplo <cuenta>.dkr.ecr.us-east-1.amazonaws.com/stq-app:1.1}"
+: "${DOMINIO_ORIGEN:?Defina DOMINIO_ORIGEN (nombre del origen en Route 53, por ejemplo origen.<dominio>)}"
+: "${CORREO_ACME:?Defina CORREO_ACME (correo para los avisos de Let's Encrypt)}"
+
+# Encabezado secreto que CloudFront agrega al origen (custom origin header «X-Origen-STQ»).
+CLAVE_ORIGEN="$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id "$AWS_SECRETS_ID" \
+  --query SecretString --output text | python3 -c 'import json,sys; print(json.load(sys.stdin)["CLAVE_ORIGEN"])')"
+export CLAVE_ORIGEN IMAGEN DOMINIO_ORIGEN
+
+# Primer certificado (una vez). Las renovaciones las hace el servicio «certificados».
+if ! docker compose -f docker-compose.prod.yml run --rm --entrypoint sh certificados \
+     -c "test -f /etc/letsencrypt/live/$DOMINIO_ORIGEN/fullchain.pem"; then
+  docker compose -f docker-compose.prod.yml run --rm --entrypoint certbot certificados certonly \
+    --dns-route53 -d "$DOMINIO_ORIGEN" --email "$CORREO_ACME" --agree-tos --non-interactive
+fi
+
+docker compose -f docker-compose.prod.yml pull app proxy certificados
+docker compose -f docker-compose.prod.yml up -d

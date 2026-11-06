@@ -266,7 +266,8 @@ usuario con el rol Administrador.
 
 ### Producción en AWS
 
-El piloto se despliega en AWS (sa-east-1): EC2 con Docker detrás de un Application Load Balancer, RDS for MySQL 8.4,
+El piloto se despliega en AWS (us-east-1): EC2 t4g.small (ARM) con Docker detrás de Amazon CloudFront y de un proxy
+nginx con TLS en la instancia, RDS for MySQL 8.4 (db.t4g.micro),
 S3 para adjuntos (SSE-KMS) y para la copia inmutable de la bitácora (Object Lock), Secrets Manager y KMS, CloudWatch
 y EventBridge Scheduler, que ejecuta `python manage.py ejecutar_tarea diaria|mensual` mediante Systems Manager.
 Las variables de AWS están en `.env.example` y los pasos en `deploy/aws/README.md`.
