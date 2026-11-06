@@ -279,6 +279,12 @@ MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.db.DatabaseCache", "LOCATION": "cache_compartida",
                       "TIMEOUT": 300, "OPTIONS": {"MAX_ENTRIES": 5000}}}
 
+# ------------------------------------------------------------------ copiloto de IA (equipo propio con Ollama)
+IA_HABILITADA = env_bool("IA_HABILITADA", True)
+IA_MODELO = env("IA_MODELO", "stq-copiloto")
+# Nombres de instituciones que la seudonimización reemplaza por [INSTITUCION] (el primero se usa al reidentificar).
+IA_INSTITUCIONES = env_lista("IA_INSTITUCIONES", "Colegio Santa Teresa,Santa Teresa,Quilpué")
+
 # ------------------------------------------------------------------ correo
 EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 EMAIL_HOST = env("EMAIL_HOST", "localhost")
