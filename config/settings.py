@@ -30,6 +30,14 @@ def _cargar_env(ruta):
 _cargar_env(BASE_DIR / ".env")
 
 
+REGION_AWS_DEFECTO = "us-east-1"   # región del piloto (Norte de Virginia), aprobada el 05/11/2026
+
+
+def region_aws():
+    """Región de AWS para todos los clientes (Secrets Manager y S3). Se define con AWS_REGION; por defecto us-east-1."""
+    return os.environ.get("AWS_REGION", "").strip() or REGION_AWS_DEFECTO
+
+
 def _cargar_secretos_aws():
     """En AWS lee un secreto JSON de Secrets Manager (p. ej. stq/produccion) y lo publica como variables de entorno.
     No sobrescribe variables ya definidas. En local, sin AWS_SECRETS_ID, no hace nada."""
@@ -40,7 +48,7 @@ def _cargar_secretos_aws():
 
     import boto3
 
-    cliente = boto3.client("secretsmanager", region_name=os.environ.get("AWS_REGION", "sa-east-1"))
+    cliente = boto3.client("secretsmanager", region_name=region_aws())
     valores = json.loads(cliente.get_secret_value(SecretId=secreto)["SecretString"])
     for clave, valor in valores.items():
         os.environ.setdefault(clave, str(valor))
@@ -191,8 +199,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 ADJUNTOS_DIR = Path(env("ADJUNTOS_DIR", str(BASE_DIR / "almacenamiento" / "adjuntos")))
 BITACORA_EXPORT_DIR = Path(env("BITACORA_EXPORT_DIR", str(BASE_DIR / "almacenamiento" / "auditoria-inmutable")))
 ALMACENAMIENTO = env("ALMACENAMIENTO", "local")
+AWS_REGION = region_aws()
 if ALMACENAMIENTO == "s3":
-    _s3 = {"region_name": env("AWS_REGION", "sa-east-1"), "default_acl": None, "file_overwrite": False,
+    _s3 = {"region_name": AWS_REGION, "default_acl": None, "file_overwrite": False,
            "object_parameters": {"ServerSideEncryption": "aws:kms", **({"SSEKMSKeyId": env("AWS_KMS_KEY_ID")}
                                                                       if env("AWS_KMS_KEY_ID") else {})}}
     _ALMACEN_ADJUNTOS = {"BACKEND": "storages.backends.s3.S3Storage",
