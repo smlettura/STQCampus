@@ -12,6 +12,7 @@ Configuración (variables de entorno o archivo agente.env junto al script):
     MODELO        stq-copiloto                  (si la plataforma indica otro modelo, se usa el de la plataforma)
     ESPERA        10                            (segundos entre consultas cuando la cola está vacía)
     TIMEOUT_OLLAMA 900                          (segundos máximos por borrador; en CPU tarda 1-3 min)
+    KEEP_ALIVE    60m                           (cuánto queda el modelo en memoria tras precargarlo)
     LOG_ARCHIVO   agente.log                    (opcional; sin él, el log va a la consola)
 
 Solo usa la biblioteca estándar de Python 3.9+: no hay que instalar nada.
@@ -47,7 +48,9 @@ OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 MODELO = os.environ.get("MODELO", "stq-copiloto")
 ESPERA = int(os.environ.get("ESPERA", "10"))
 TIMEOUT_OLLAMA = int(os.environ.get("TIMEOUT_OLLAMA", "900"))
+KEEP_ALIVE = os.environ.get("KEEP_ALIVE", "60m")
 LATIDO_CADA = 60
+RECALENTAR_CADA = 20 * 60
 seguir = True
 
 
@@ -76,6 +79,28 @@ def ollama_disponible():
     except Exception as e:  # noqa: BLE001
         log.warning("Ollama no responde en %s: %s", OLLAMA_URL, e)
         return False
+
+
+def calentar(modelo):
+    """Carga el modelo en memoria sin generar nada (Ollama: /api/generate sin prompt), para que el primer borrador no
+    pague la carga en frío. Se llama al arrancar y cuando Ollama vuelve después de una caída."""
+    try:
+        t0 = time.monotonic()
+        _http("POST", OLLAMA_URL + "/api/generate", {"model": modelo, "keep_alive": KEEP_ALIVE}, timeout=TIMEOUT_OLLAMA)
+        log.info("Modelo %s cargado en memoria (%.0f s)", modelo, time.monotonic() - t0)
+    except Exception as e:  # noqa: BLE001
+        log.warning("No se pudo precargar el modelo: %s", e)
+
+
+def mantener_despierto():
+    """Windows: pide al sistema no suspenderse mientras el agente corre (no evita la suspensión al cerrar la tapa)."""
+    if os.name == "nt":
+        try:
+            import ctypes
+            ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)   # ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+            log.info("Suspensión automática de Windows desactivada mientras corre el agente")
+        except Exception as e:  # noqa: BLE001
+            log.warning("No se pudo evitar la suspensión: %s", e)
 
 
 def generar(modelo, mensajes, opciones=None, keep_alive=None):
@@ -111,12 +136,18 @@ def atender(trabajo):
 
 
 def ciclo():
-    ultimo_latido = 0.0
+    ultimo_latido = ultimo_calentado = 0.0
+    ollama_ok = False
     while seguir:
         try:
             if not ollama_disponible():
+                ollama_ok = False
                 time.sleep(30)          # sin Ollama no se toma nada: la plataforma muestra «equipo de IA apagado»
                 continue
+            if not ollama_ok or time.monotonic() - ultimo_calentado > RECALENTAR_CADA:
+                ollama_ok = True        # al arrancar, cuando Ollama vuelve y cada 20 min: el modelo sigue en memoria
+                calentar(MODELO)
+                ultimo_calentado = time.monotonic()
             status, trabajo = plataforma("tomar/", {"modelo": MODELO})   # también cuenta como latido
             ultimo_latido = time.monotonic()
             if status == 200 and trabajo:
@@ -163,6 +194,7 @@ def main():
         log.info("Ollama: %s · Plataforma: %s %s", "OK" if ok else "FALLA", status, datos)
         return 0 if ok else 1
     log.info("Agente STQ %s · plataforma %s · Ollama %s · modelo %s", VERSION, STQ_URL, OLLAMA_URL, MODELO)
+    mantener_despierto()
     return ciclo()
 
 

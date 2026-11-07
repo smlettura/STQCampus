@@ -24,6 +24,9 @@ class Manejador(BaseHTTPRequestHandler):
         self._json({"error": "no encontrado"}, 404)
 
     def do_POST(self):
+        if self.path == "/api/generate":                 # precarga del modelo (sin prompt)
+            self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            return self._json({"model": MODELO, "response": "", "done": True})
         if self.path != "/api/chat":
             return self._json({"error": "no encontrado"}, 404)
         datos = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))

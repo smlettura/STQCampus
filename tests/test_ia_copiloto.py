@@ -313,3 +313,38 @@ class ComandoTokenTest(PruebaBase):
         self.assertIsNotNone(ia.agente_por_token(token))
         call_command("crear_token_agente", "pc-x", "--revocar", stdout=StringIO())
         self.assertIsNone(ia.agente_por_token(token))
+
+
+class SalidaRealGemmaTest(CopilotoBase):
+    """Regresión con la salida REAL de gemma2:9b (prueba del módulo de IA del 29-oct-2026, datos ficticios de demostración,
+    nombre reemplazado por [ESTUDIANTE] en tests/datos/). Una buena salida del modelo no debe bloquearse ni reintentarse."""
+
+    def test_salida_real_pasa_los_guardianes_y_se_reidentifica(self):
+        import pathlib
+        SesionSeguimiento.objects.all().delete()
+        tz = timezone.get_current_timezone()
+        notas = [((2026, 8, 4), "individual", "relaciones_pares", "Primera entrevista. Martina relata dificultades para integrarse "
+                  "a un nuevo grupo de amistades.", "Espacio semanal de conversación; observar recreos con la asistente de aula."),
+                 ((2026, 8, 29), "familiar", "familiar", "Se entrevista a la apoderada. Se acuerdan rutinas de apoyo en casa y "
+                  "comunicación quincenal con el colegio.", "La apoderada acompañará la rutina de tareas; nueva reunión en un mes."),
+                 ((2026, 9, 28), "individual", "relaciones_pares", "Refiere avances: participó dos veces en el taller de ajedrez y "
+                  "almuerza con dos compañeras. Se mantiene el seguimiento quincenal.", "Seguir asistiendo al taller."),
+                 ((2026, 10, 20), "individual", "regulacion_emocional", "Entrevista de cierre de etapa. La estudiante se muestra "
+                  "tranquila y motivada.", "Coordinar con el profesor jefe actividades en grupos pequeños."),
+                 ((2026, 10, 28), "individual", "regulacion_emocional", "Control breve: la estudiante mantiene los avances.", "")]
+        sesiones = [SesionSeguimiento.objects.create(
+            caso=self.caso, profesional=self.psicologa, fecha_hora=datetime.datetime(*f, 10, 0, tzinfo=tz), tipo_atencion=t,
+            motivo=m, nota=n, acuerdos=a) for f, t, m, n, a in notas]
+        self.consentir(self.estudiante, "uso_ia")
+        sol = ia.crear_solicitud(self.psicologa, self.estudiante, self.caso, sesiones, "direccion",
+                                 ["antecedentes", "desarrollo", "acuerdos"])
+        self.assertEqual(self.api("tomar").json()["id"], sol.pk)
+        salida = (pathlib.Path(__file__).parent / "datos" / "salida_real_gemma2_seudonimizada.txt").read_text(encoding="utf-8")
+        r = self.api("resultado", {"texto": salida, "modelo": "gemma2:9b", "tokens_salida": 411}, kwargs={"pk": sol.pk})
+        self.assertNotIn("reintentar", r.json())
+        sol.refresh_from_db()
+        c = sol.contenido
+        self.assertEqual(c.estado, "generado", c.alertas)
+        self.assertIn("Martina Pérez asistió a sesiones individuales", c.texto_generado)
+        self.assertIn("Coordinación con el profesor jefe para actividades en grupos pequeños.", c.texto_generado)
+        self.assertEqual(c.alertas, "", c.alertas)
