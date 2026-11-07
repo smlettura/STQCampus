@@ -1,6 +1,7 @@
 """Seudonimización antes de que el texto salga de AWS hacia el equipo propio, y reidentificación al volver (RNF-11).
 
-- Nombres del estudiante, apoderados y profesionales → [ESTUDIANTE], [APODERADO_1], [PROFESIONAL_1]…
+- Nombres del estudiante, apoderados, profesionales y otras personas que indique la profesional → [ESTUDIANTE],
+  [APODERADO_1], [PROFESIONAL_1], [OTRA_PERSONA_1]…
 - RUT, correos, teléfonos y direcciones → se eliminan ([RUT], [CORREO], [TELEFONO], [DIRECCION]).
 - Fecha de nacimiento → edad. Curso, sede e instituciones → [CURSO], [SEDE], [ESTABLECIMIENTO].
 - Si después de reemplazar queda algún identificador conocido, se lanza SeudonimizacionIncompleta y no sale nada.
@@ -56,7 +57,7 @@ def _edad_en(fecha, hoy):
 
 
 class Seudonimizador:
-    def __init__(self, estudiante, profesionales=(), hoy=None):
+    def __init__(self, estudiante, profesionales=(), hoy=None, otros_nombres=()):
         from django.utils import timezone
         self.hoy = hoy or timezone.localdate()
         self.reglas = []          # (patrón, marcador), se aplican de la frase más larga a la más corta
@@ -83,6 +84,9 @@ class Seudonimizador:
                 vistos.append(p.pk)
                 self._agregar({p.nombre_completo, *_tokens(p.nombre_completo)}, "[PROFESIONAL_%d]" % len(vistos),
                               p.nombre_completo)
+        # Otras personas que la profesional indica que aparecen en las notas (compañeros, familiares…)
+        for i, nombre in enumerate(dict.fromkeys(n.strip() for n in otros_nombres if n and n.strip()), 1):
+            self._agregar({nombre, *_tokens(nombre)}, "[OTRA_PERSONA_%d]" % i, nombre)
         curso = e.curso
         self._agregar(self._variantes_curso(curso), "[CURSO]", curso.nombre)
         self._agregar({curso.sede.nombre}, "[SEDE]", curso.sede.nombre)

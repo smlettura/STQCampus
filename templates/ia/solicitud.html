@@ -20,6 +20,8 @@
 {% elif contenido %}
 <div class="nota-info" style="margin-bottom:14px">{% icono "info" 18 %}
   <p><strong>Generado con IA ({{ contenido.modelo }}).</strong> Revise y corrija el texto: nada pasa a la ficha sin su validación. Los datos que se eliminaron por privacidad (por ejemplo, [RUT]) no se restituyen.</p></div>
+{% if alertas %}<section class="tarjeta" style="margin-bottom:12px" aria-labelledby="t-avisos"><h2 id="t-avisos">Revise antes de validar</h2>
+  <ul>{% for a in alertas %}<li>{{ a }}</li>{% endfor %}</ul></section>{% endif %}
 {% if contenido.estado == "generado" %}
 <form method="post" action="{% url 'ia:validar' contenido.pk %}" class="tarjeta">{% csrf_token %}
   <label for="id_texto"><strong>Borrador (editable)</strong></label>
@@ -33,6 +35,7 @@
 <form method="post" action="{% url 'ia:descartar' contenido.pk %}" style="margin-top:8px">{% csrf_token %}<button class="boton secundario" type="submit">Descartar borrador</button></form>
 {% else %}
 <section class="tarjeta"><h2>{{ contenido.get_estado_display }}</h2>
+  {% if contenido.estado == "bloqueado" %}<p>{{ contenido.texto_generado }}</p>{% endif %}
   {% if contenido.estado == "validado" %}<p>Validado por {{ contenido.validador.nombre_completo }} el {{ contenido.fecha_validacion|date:"d/m/Y H:i" }}.{% if contenido.informe %} <a href="{% url 'evaluacion:informe' contenido.informe.pk %}">Ver el informe</a>.{% endif %}</p>{% endif %}</section>
 {% endif %}
 <form method="post" action="{% url 'ia:retroalimentar' contenido.pk %}" class="tarjeta" style="margin-top:12px">{% csrf_token %}

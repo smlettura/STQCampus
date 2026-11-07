@@ -11,7 +11,7 @@ Configuración (variables de entorno o archivo agente.env junto al script):
     OLLAMA_URL    http://127.0.0.1:11434        (por defecto)
     MODELO        stq-copiloto                  (si la plataforma indica otro modelo, se usa el de la plataforma)
     ESPERA        10                            (segundos entre consultas cuando la cola está vacía)
-    TIMEOUT_OLLAMA 600                          (segundos máximos por borrador)
+    TIMEOUT_OLLAMA 900                          (segundos máximos por borrador; en CPU tarda 1-3 min)
     LOG_ARCHIVO   agente.log                    (opcional; sin él, el log va a la consola)
 
 Solo usa la biblioteca estándar de Python 3.9+: no hay que instalar nada.
@@ -46,7 +46,7 @@ STQ_TOKEN = os.environ.get("STQ_TOKEN", "")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 MODELO = os.environ.get("MODELO", "stq-copiloto")
 ESPERA = int(os.environ.get("ESPERA", "10"))
-TIMEOUT_OLLAMA = int(os.environ.get("TIMEOUT_OLLAMA", "600"))
+TIMEOUT_OLLAMA = int(os.environ.get("TIMEOUT_OLLAMA", "900"))
 LATIDO_CADA = 60
 seguir = True
 
@@ -78,23 +78,35 @@ def ollama_disponible():
         return False
 
 
-def generar(modelo, mensajes):
-    _, r = _http("POST", OLLAMA_URL + "/api/chat", {"model": modelo, "messages": mensajes, "stream": False},
-                 timeout=TIMEOUT_OLLAMA)
+def generar(modelo, mensajes, opciones=None, keep_alive=None):
+    cuerpo = {"model": modelo, "messages": mensajes, "stream": False}
+    if opciones:
+        cuerpo["options"] = opciones          # temperature, num_ctx, num_predict, num_gpu: los indica la plataforma
+    if keep_alive:
+        cuerpo["keep_alive"] = keep_alive
+    _, r = _http("POST", OLLAMA_URL + "/api/chat", cuerpo, timeout=TIMEOUT_OLLAMA)
     return (r.get("message") or {}).get("content", ""), r.get("prompt_eval_count", 0), r.get("eval_count", 0)
 
 
 def atender(trabajo):
-    sid, modelo = trabajo["id"], trabajo.get("modelo") or MODELO
-    log.info("Solicitud %s tomada; generando con %s…", sid, modelo)
+    """Genera y devuelve. Si el guardián de la plataforma rechaza la salida, responde con un trabajo de reintento
+    (con un aviso correctivo) y se genera una sola vez más."""
+    sid = trabajo["id"]
     t0 = time.monotonic()
-    try:
-        texto, te, ts = generar(modelo, trabajo["mensajes"])
-        cuerpo = {"texto": texto, "modelo": modelo, "tokens_entrada": te, "tokens_salida": ts}
-    except Exception as e:  # noqa: BLE001  (se informa a la plataforma, que reintenta hasta 3 veces)
-        log.error("Solicitud %s: fallo de Ollama: %s", sid, e)
-        cuerpo = {"error": "fallo de Ollama: %s" % type(e).__name__}
-    status, _ = plataforma("%s/resultado/" % sid, cuerpo)
+    for _ in range(2):
+        modelo = trabajo.get("modelo") or MODELO
+        log.info("Solicitud %s: generando con %s…", sid, modelo)
+        try:
+            texto, te, ts = generar(modelo, trabajo["mensajes"], trabajo.get("opciones"), trabajo.get("keep_alive"))
+            cuerpo = {"texto": texto, "modelo": modelo, "tokens_entrada": te, "tokens_salida": ts}
+        except Exception as e:  # noqa: BLE001  (se informa a la plataforma, que reintenta hasta 3 veces)
+            log.error("Solicitud %s: fallo de Ollama: %s", sid, e)
+            cuerpo = {"error": "fallo de Ollama: %s" % type(e).__name__}
+        _, resp = plataforma("%s/resultado/" % sid, cuerpo)
+        if not (resp or {}).get("reintentar"):
+            break
+        log.info("Solicitud %s: la plataforma pidió una versión corregida", sid)
+        trabajo = resp["reintentar"]
     log.info("Solicitud %s devuelta (%s) en %.0f s", sid, "error" if "error" in cuerpo else "borrador", time.monotonic() - t0)
 
 

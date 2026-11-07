@@ -281,7 +281,9 @@ CACHES = {"default": {"BACKEND": "django.core.cache.backends.db.DatabaseCache", 
 
 # ------------------------------------------------------------------ copiloto de IA (equipo propio con Ollama)
 IA_HABILITADA = env_bool("IA_HABILITADA", True)
-IA_MODELO = env("IA_MODELO", "stq-copiloto")
+IA_MODELO = env("IA_MODELO", "stq-copiloto")     # o «gemma2:9b»: el prompt de sistema v4 se envía en cada solicitud
+IA_NUM_GPU = None if env("IA_NUM_GPU", "0") == "" else int(env("IA_NUM_GPU", "0"))   # 0 = solo CPU, como se midió
+IA_KEEP_ALIVE = env("IA_KEEP_ALIVE", "60m")      # cuánto tiempo Ollama mantiene el modelo en memoria entre borradores
 # Nombres de instituciones que la seudonimización reemplaza por [INSTITUCION] (el primero se usa al reidentificar).
 IA_INSTITUCIONES = env_lista("IA_INSTITUCIONES", "Colegio Santa Teresa,Santa Teresa,Quilpué")
 

@@ -22,13 +22,13 @@ from django.utils import timezone
 from apps.auditoria.servicios import registrar
 from apps.cumplimiento.models import Consentimiento
 
-from . import instrucciones
+from . import guardas, instrucciones, motor
 from .models import AgenteIA, ContenidoIA, LlamadaModelo, RetroalimentacionIA, SolicitudIA
 from .seudonimizacion import Seudonimizador, SeudonimizacionIncompleta, reidentificar
 
 DISPONIBLE = getattr(settings, "IA_HABILITADA", True)
 MODELO = getattr(settings, "IA_MODELO", "stq-copiloto")
-PLAZO_TOMA = datetime.timedelta(minutes=10)
+PLAZO_TOMA = datetime.timedelta(minutes=20)          # en CPU un borrador tarda 1-3 min; con reintento, el doble
 MAX_INTENTOS = 3
 EXPIRACION = datetime.timedelta(hours=24)
 LATIDO_MAXIMO = datetime.timedelta(minutes=5)
@@ -82,7 +82,7 @@ def latido(agente, modelo=""):
 
 
 # ------------------------------------------------------------------ creación (lado de la profesional)
-def crear_solicitud(usuario, estudiante, caso, sesiones, tipo, secciones):
+def crear_solicitud(usuario, estudiante, caso, sesiones, tipo, secciones, indicaciones="", otros_nombres=()):
     if not DISPONIBLE:
         raise ModuloIANoDisponible("El copiloto está deshabilitado en esta instalación.")
     if tipo not in dict(TIPOS_INFORME):
@@ -95,19 +95,33 @@ def crear_solicitud(usuario, estudiante, caso, sesiones, tipo, secciones):
     if not Consentimiento.vigente_para(estudiante, "uso_ia"):
         raise ErrorSolicitud("No hay un consentimiento vigente del apoderado para el uso del módulo de IA. "
                              "Redacte el informe de forma manual o registre el consentimiento.")
+    indicaciones = (indicaciones or "").strip()[:500]
+    pedidos = guardas.detectar_peticiones(indicaciones)          # guardián de entrada: no se envía nada
+    if pedidos:
+        registrar(usuario, "acceso_denegado", "solicitud_ia", None,
+                  detalle="bloqueada: indicación fuera de límites (%s)" % ",".join(h.codigo for h in pedidos))
+        raise ErrorSolicitud("El asistente no puede: " + "; ".join(str(h) for h in pedidos)
+                             + ". Quite esa indicación o redacte esa parte usted. " + guardas.AYUDA_FORMATOS)
+    condiciones, ignoradas = guardas.filtrar_condiciones(indicaciones) if indicaciones else ("Ninguna.", [])
+    entrada = instrucciones.construir_entrada(sesiones, tipo, secciones, condiciones)
+    entrada, inyecciones = guardas.neutralizar_inyecciones(entrada)
     profesionales = [usuario, *[s.profesional for s in sesiones], estudiante.curso.profesor_jefe]
-    seud = Seudonimizador(estudiante, profesionales)
-    texto = instrucciones.construir_entrada(estudiante, sesiones, tipo, secciones)
+    seud = Seudonimizador(estudiante, profesionales, otros_nombres=otros_nombres)
     try:
-        seudonimizado = seud.aplicar(texto)
+        seudonimizado = seud.aplicar(entrada)
     except SeudonimizacionIncompleta:
         registrar(usuario, "acceso_denegado", "solicitud_ia", None, detalle="bloqueada: seudonimización incompleta")
         raise ErrorSolicitud("La solicitud se bloqueó porque quedaba un dato identificable después de seudonimizar. "
                              "No se envió nada. Revise las atenciones elegidas o redacte el informe de forma manual.")
+    avisos = ["Se ignoró una indicación que no es de formato: «%s». %s" % (h.fragmento[:70], guardas.AYUDA_FORMATOS)
+              for h in ignoradas]
+    avisos += ["Se omitió una instrucción dirigida al asistente dentro de las notas: %s" % h.fragmento.strip()[:70]
+               for h in inyecciones]
     sol = SolicitudIA.objects.create(caso=caso, solicitante=usuario, tipo_informe=tipo, secciones=",".join(secciones),
                                      texto_seudonimizado=seudonimizado, correspondencia=seud.correspondencia(),
-                                     hash_entrada=huella(seudonimizado))
-    registrar(usuario, "creacion", "solicitud_ia", sol.pk, detalle="atenciones=%d tipo=%s" % (len(sesiones), tipo))
+                                     hash_entrada=huella(seudonimizado), avisos="\n".join(avisos))
+    registrar(usuario, "creacion", "solicitud_ia", sol.pk, detalle="atenciones=%d tipo=%s prompt=%s inyecciones=%d" % (
+        len(sesiones), tipo, instrucciones.VERSION_PROMPT, len(inyecciones)))
     return sol
 
 
@@ -149,8 +163,12 @@ def tomar(agente):
         sol.intentos += 1
         sol.save(update_fields=["estado", "agente", "fecha_toma", "intentos"])
     registrar(None, "exportacion", "solicitud_ia", sol.pk, detalle="tomada por agente %s; sha256=%s" % (agente.pk, sol.hash_entrada))
-    return {"id": sol.pk, "modelo": MODELO,
-            "mensajes": instrucciones.construir_mensajes(sol.texto_seudonimizado, sol.secciones.split(","))}
+    return _trabajo(sol, instrucciones.construir_mensajes(sol.texto_seudonimizado))
+
+
+def _trabajo(sol, mensajes):
+    return {"id": sol.pk, "modelo": MODELO, "mensajes": mensajes, "opciones": instrucciones.opciones(),
+            "keep_alive": getattr(settings, "IA_KEEP_ALIVE", "60m")}
 
 
 def _solicitud_del_agente(agente, id_solicitud):
@@ -161,21 +179,56 @@ def _solicitud_del_agente(agente, id_solicitud):
 
 
 def registrar_resultado(agente, id_solicitud, texto, modelo="", tokens_entrada=0, tokens_salida=0):
-    texto = (texto or "").strip()
+    """Guardián de salida (guardas.py) sobre lo que devolvió el modelo. Si se sale de los límites y aún no se reintentó,
+    devuelve un trabajo nuevo con el aviso correctivo (el agente lo vuelve a generar dentro del mismo plazo). Si
+    persiste, el borrador queda «bloqueado» y no se puede validar. Devuelve (solicitud, trabajo_reintento | None)."""
+    texto = (texto or "").strip()[:MAX_CARACTERES_RESPUESTA]
     if not texto:
-        return registrar_error(agente, id_solicitud, "respuesta vacía")
+        return registrar_error(agente, id_solicitud, "respuesta vacía"), None
     with transaction.atomic():
         sol = _solicitud_del_agente(agente, id_solicitud)
-        borrador = reidentificar(texto[:MAX_CARACTERES_RESPUESTA], sol.correspondencia)
+        entrada = sol.texto_seudonimizado
+        secciones = instrucciones.texto_secciones(sol.secciones.split(","))
+        infr = guardas.revisar_limites(guardas.sin_condiciones(entrada), texto, entrada)
+        infr += guardas.secciones_ajenas(texto, secciones)
+        if infr and not sol.reintentado:
+            sol.reintentado, sol.fecha_toma = True, timezone.now()
+            sol.save(update_fields=["reintentado", "fecha_toma"])
+            registrar(None, "exportacion", "solicitud_ia", sol.pk, detalle="reintento correctivo: %s" % ",".join(h.codigo for h in infr))
+            return sol, _trabajo(sol, instrucciones.construir_mensajes(entrada, instrucciones.aviso_reintento(infr)))
+        quitadas = []
+        if infr and all(h.codigo == guardas.SECCION for h in infr):
+            quitadas, texto, infr = infr, guardas.quitar_secciones(texto, infr), []
+        alertas = [a for a in sol.avisos.split("\n") if a]
+        if infr:
+            estado, borrador = "bloqueado", motor.MENSAJE_BLOQUEO
+            alertas += ["Bloqueado: %s" % h for h in infr]
+        else:
+            estado = "generado"
+            alertas += motor.revisar_salida(entrada, texto)
+            alertas += ["Se eliminó una sección que no se había pedido: %s" % h.fragmento.strip()[:70] for h in quitadas]
+            omit = guardas.omisiones_riesgo(entrada, texto)
+            if omit:
+                alertas.append("El borrador no menciona datos de riesgo que están en las notas (%s): revíselo." % ", ".join(omit))
+            if guardas.MARCA_FUERA_DE_ALCANCE.lower() in texto.lower():
+                alertas.append("El asistente se negó a redactar una parte («FUERA DE MI ALCANCE»): complete esa parte usted.")
+            nuevas = guardas.cifras_nuevas(entrada, texto)
+            if nuevas:
+                alertas.append("Cifras que no estaban en las notas (verifique): " + ", ".join(nuevas[:8]))
+            borrador = reidentificar(texto, sol.correspondencia)
         contenido = ContenidoIA.objects.create(caso=sol.caso, solicitante=sol.solicitante, tipo="borrador_informe",
-                                               modelo=(modelo or MODELO)[:60], texto_generado=borrador)
+                                               modelo=(modelo or MODELO)[:60], texto_generado=borrador, estado=estado,
+                                               alertas="\n".join(alertas))
         LlamadaModelo.objects.create(contenido=contenido, proveedor="ollama (equipo propio)", modelo=(modelo or MODELO)[:60],
                                      tokens_entrada=max(0, int(tokens_entrada or 0)),
                                      tokens_salida=max(0, int(tokens_salida or 0)), hash_carga=sol.hash_entrada)
         sol.estado, sol.contenido, sol.fecha_termino = "lista", contenido, timezone.now()
-        sol.save(update_fields=["estado", "contenido", "fecha_termino"])
-    registrar(None, "creacion", "contenido_ia", contenido.pk, detalle="borrador recibido de la solicitud %s" % sol.pk)
-    return sol
+        if estado == "bloqueado":
+            _limpiar(sol)
+        sol.save()
+    registrar(None, "creacion", "contenido_ia", contenido.pk, detalle="borrador %s de la solicitud %s; prompt %s; reintento=%s; %s" % (
+        estado, sol.pk, instrucciones.VERSION_PROMPT, sol.reintentado, ",".join(h.codigo for h in infr)))
+    return sol, None
 
 
 def registrar_error(agente, id_solicitud, detalle):

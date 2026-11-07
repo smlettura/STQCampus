@@ -28,9 +28,10 @@ class Manejador(BaseHTTPRequestHandler):
             return self._json({"error": "no encontrado"}, 404)
         datos = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
         entrada = datos["messages"][-1]["content"]
-        titulos = re.findall(r"^## .+$", entrada, re.M) or ["## Borrador"]
-        marcadores = sorted(set(re.findall(r"\[[A-ZÁÉÍÓÚ_0-9]+(?::[^\]]*)?\]", entrada.split("Datos:", 1)[-1])))
-        texto = "\n\n".join("%s\n[BORRADOR SIMULADO] Texto de prueba sobre %s." % (t, ", ".join(marcadores[:3]) or "el caso")
+        m = re.search(r"Secciones solicitadas \(en este orden\): (.+)", entrada)
+        titulos = ["## " + t.strip() for t in (m.group(1).split(";") if m else ["Borrador"])]
+        marcadores = sorted(set(re.findall(r"\[[A-Z_]+(?:_\d+)?\]", entrada.split("Notas de atencion", 1)[-1])))
+        texto = "\n\n".join("%s\n[BORRADOR SIMULADO] Texto de prueba sobre %s." % (t, ", ".join(marcadores) or "el caso")
                             for t in titulos)
         self._json({"model": datos.get("model"), "message": {"role": "assistant", "content": texto}, "done": True,
                     "prompt_eval_count": len(entrada) // 4, "eval_count": len(texto) // 4})

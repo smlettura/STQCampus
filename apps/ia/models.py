@@ -53,7 +53,7 @@ class FragmentoNormativo(models.Model):
 class ContenidoIA(models.Model):
     TIPOS = [("borrador_informe", "Borrador de informe"), ("resumen", "Resumen cronológico con evidencias")]
     ESTADOS = [("generado", "Generado — pendiente de validación"), ("validado", "Validado por una profesional"),
-               ("descartado", "Descartado")]
+               ("descartado", "Descartado"), ("bloqueado", "Bloqueado: se salió de los límites del módulo")]
 
     id = models.BigAutoField(primary_key=True, db_column="id_contenido")
     caso = models.ForeignKey("casos.Caso", on_delete=models.CASCADE, related_name="contenidos_ia", db_column="id_caso")
@@ -63,6 +63,7 @@ class ContenidoIA(models.Model):
     modelo = models.CharField("modelo", max_length=60)
     texto_generado = TextoCifrado("texto generado")
     texto_validado = TextoCifrado("texto validado por la profesional", blank=True)
+    alertas = TextoCifrado("avisos para la profesional", blank=True)   # uno por línea (marcadores, límites, cifras nuevas)
     etiqueta_ia = models.BooleanField("marcado como generado con IA", default=True, editable=False)
     estado = models.CharField("estado", max_length=12, choices=ESTADOS, default="generado")
     validador = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
@@ -183,6 +184,8 @@ class SolicitudIA(models.Model):
     contenido = models.OneToOneField(ContenidoIA, on_delete=models.SET_NULL, null=True, blank=True,
                                      related_name="solicitud", db_column="id_contenido")
     detalle_error = models.CharField("detalle del error", max_length=200, blank=True)
+    avisos = TextoCifrado("avisos de la entrada", blank=True)       # indicaciones ignoradas, órdenes neutralizadas
+    reintentado = models.BooleanField("ya tuvo el reintento correctivo", default=False)
 
     class Meta:
         db_table = "solicitud_ia"

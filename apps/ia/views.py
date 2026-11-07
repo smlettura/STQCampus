@@ -71,8 +71,9 @@ def solicitar(request):
         denegar(request, "solicitud de IA con atenciones no visibles")
     caso = max(sesiones, key=lambda s: s.fecha_hora).caso if sesiones else None
     try:
+        otros = [n for n in request.POST.get("otros_nombres", "").replace(";", ",").split(",") if n.strip()][:20]
         sol = servicios.crear_solicitud(u, estudiante, caso, sesiones, request.POST.get("tipo", ""),
-                                        request.POST.getlist("secciones"))
+                                        request.POST.getlist("secciones"), request.POST.get("indicaciones", ""), otros)
     except servicios.ErrorSolicitud as e:
         messages.error(request, str(e))
         return redirect(volver)
@@ -99,7 +100,8 @@ def solicitud(request, pk):
         "sol": sol, "estudiante": sol.caso.estudiante, "contenido": sol.contenido, "conectado": servicios.agente_conectado(),
         "posicion": SolicitudIA.objects.filter(estado="pendiente", fecha_creacion__lte=sol.fecha_creacion).count(),
         "tipos_ficha": Informe.TIPOS, "tipo_sugerido": servicios.TIPO_INFORME_FICHA.get(sol.tipo_informe, "seguimiento"),
-        "motivos": RetroalimentacionIA.MOTIVOS, "en_espera": sol.estado in ("pendiente", "en_proceso")})
+        "motivos": RetroalimentacionIA.MOTIVOS, "en_espera": sol.estado in ("pendiente", "en_proceso"),
+        "alertas": [a for a in (sol.contenido.alertas if sol.contenido_id else "").split("\n") if a]})
 
 
 def _contenido(request, pk):
@@ -143,7 +145,7 @@ def retroalimentar(request, pk):
     contenido = _contenido(request, pk)
     try:
         servicios.retroalimentar(request.user, contenido, request.POST.get("motivo", ""), request.POST.get("comentario", ""))
-        messages.success(request, "Gracias: la observación queda registrada para ajustar el Modelfile.")
+        messages.success(request, "Gracias: la observación queda registrada para ajustar el prompt del módulo de IA.")
     except Exception:  # ValidationError de motivo o comentario
         messages.error(request, "Indique el motivo y un comentario de al menos 10 caracteres.")
     return redirect("ia:solicitud", contenido.solicitud.pk)

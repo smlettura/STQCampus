@@ -61,9 +61,11 @@ def resultado(request, agente, datos, pk):
     try:
         if datos.get("error"):
             servicios.registrar_error(agente, pk, str(datos["error"]))
-        else:
-            servicios.registrar_resultado(agente, pk, str(datos.get("texto", "")), str(datos.get("modelo", "")),
-                                          datos.get("tokens_entrada", 0), datos.get("tokens_salida", 0))
+            return JsonResponse({"ok": True})
+        _, reintento = servicios.registrar_resultado(agente, pk, str(datos.get("texto", "")), str(datos.get("modelo", "")),
+                                                     datos.get("tokens_entrada", 0), datos.get("tokens_salida", 0))
     except servicios.ErrorSolicitud as e:
         return JsonResponse({"detalle": str(e)}, status=409)
+    if reintento:                 # el guardián de salida pidió una nueva versión: el agente la genera de inmediato
+        return JsonResponse({"ok": True, "reintentar": reintento})
     return JsonResponse({"ok": True})

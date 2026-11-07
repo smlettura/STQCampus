@@ -49,6 +49,12 @@
         <div class="campos dos" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--linea)">
           {% for c, t in secciones %}<label class="grupo-casilla" style="margin-bottom:8px"><input type="checkbox" name="secciones" value="{{ c }}"{% if c in secciones_defecto %} checked{% endif %}> <span>{{ t }}</span></label>{% endfor %}
         </div>
+        <div class="grupo" style="margin-top:12px"><label for="id_otros">Otras personas nombradas en las notas (opcional)</label>
+          <input class="campo" type="text" id="id_otros" name="otros_nombres" maxlength="400" autocomplete="off" aria-describedby="ayuda-otros">
+          <p class="ayuda" id="ayuda-otros">Compañeros, familiares u otros, separados por coma. Se reemplazan por [OTRA_PERSONA_1]… antes de enviar.</p></div>
+        <div class="grupo"><label for="id_indicaciones">Indicaciones de formato (opcional)</label>
+          <input class="campo" type="text" id="id_indicaciones" name="indicaciones" maxlength="500" autocomplete="off" aria-describedby="ayuda-ind">
+          <p class="ayuda" id="ayuda-ind">Solo formato: tono formal o simple, más breve, con o sin viñetas… Lo demás se ignora.</p></div>
       </fieldset>
     </section>
     <div class="acciones" style="margin-top:12px">
