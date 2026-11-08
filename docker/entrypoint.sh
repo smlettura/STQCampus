@@ -3,6 +3,24 @@
 # aplicación (sin UPDATE/DELETE sobre la bitácora), inicializa roles y reglas, y levanta gunicorn.
 set -e
 
+# En AWS la configuración vive en Secrets Manager. settings.py la lee por su cuenta, pero este script también necesita
+# DB_HOST, DB_MIGRA_USER, etc. antes de llamar a Django: se exportan aquí (sin sobrescribir variables ya definidas).
+if [ -n "$AWS_SECRETS_ID" ]; then
+  SECRETOS="$(python - <<'PY'
+import json, os, shlex
+import boto3
+region = os.environ.get("AWS_REGION") or "us-east-1"
+valores = json.loads(boto3.client("secretsmanager", region_name=region)
+                     .get_secret_value(SecretId=os.environ["AWS_SECRETS_ID"])["SecretString"])
+for clave, valor in valores.items():
+    if clave.isidentifier() and clave not in os.environ:
+        print("export %s=%s" % (clave, shlex.quote(str(valor))))
+PY
+)"
+  eval "$SECRETOS"
+  unset SECRETOS
+fi
+
 if [ "$DB_ENGINE" = "mysql" ]; then
   echo "Esperando a MySQL en $DB_HOST:${DB_PORT:-3306}..."
   python - <<'PY'
