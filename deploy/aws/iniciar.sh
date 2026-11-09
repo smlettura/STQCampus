@@ -1,6 +1,9 @@
 #!/bin/sh
 # Arranque en la EC2 (por Session Manager; sin SSH). Ejecutar desde la raíz del repositorio:
 #   DOMINIO_ORIGEN=origen.<dominio> CORREO_ACME=<correo> sh deploy/aws/iniciar.sh
+# Sin CloudFront (AWS Academy Learner Lab no permite crear distribuciones): el dominio es el público y nginx atiende
+# directo a los navegadores:
+#   SIN_CLOUDFRONT=1 DOMINIO_ORIGEN=app.<dominio> CORREO_ACME=<correo> sh deploy/aws/iniciar.sh
 # Por defecto construye la imagen en la propia instancia (es ARM, igual que la producción). Para usar una imagen ya
 # publicada en Amazon ECR, defina IMAGEN=<cuenta>.dkr.ecr.us-east-1.amazonaws.com/stq-app:<versión>.
 # Los secretos de la aplicación se leen de Secrets Manager con el rol de IAM de la instancia.
@@ -26,6 +29,10 @@ fi
 CLAVE_ORIGEN="$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id "$AWS_SECRETS_ID" \
   --query SecretString --output text | python3 -c 'import json,sys; print(json.load(sys.stdin)["CLAVE_ORIGEN"])')"
 export CLAVE_ORIGEN IMAGEN DOMINIO_ORIGEN
+if [ "${SIN_CLOUDFRONT:-0}" = "1" ]; then
+  export PLANTILLA_PROXY=./proxy/stq-directo.conf.template
+  echo "Modo sin CloudFront: nginx atiende directo en https://$DOMINIO_ORIGEN"
+fi
 
 $COMPOSE pull $DESCARGAR
 # Primer certificado (una vez). Las renovaciones las hace el servicio «certificados».

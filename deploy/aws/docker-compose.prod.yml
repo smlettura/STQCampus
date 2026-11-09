@@ -29,12 +29,12 @@ services:
     container_name: stq-proxy
     restart: unless-stopped
     depends_on: [app]
-    ports: ["443:443"]
+    ports: ["443:443", "80:80"]   # el 80 solo existe en la variante sin CloudFront (redirige a https)
     environment:
       DOMINIO_ORIGEN: ${DOMINIO_ORIGEN:?Defina DOMINIO_ORIGEN, por ejemplo origen.<dominio>}
       CLAVE_ORIGEN: ${CLAVE_ORIGEN:?Defina CLAVE_ORIGEN (se lee de Secrets Manager en iniciar.sh)}
     volumes:
-      - ./proxy/stq.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${PLANTILLA_PROXY:-./proxy/stq.conf.template}:/etc/nginx/templates/default.conf.template:ro
       - certificados:/etc/letsencrypt:ro
     # Recarga cada 12 h para tomar el certificado renovado.
     command: ["/bin/sh", "-c", "(while :; do sleep 43200; nginx -s reload; done) & exec /docker-entrypoint.sh nginx -g 'daemon off;'"]
