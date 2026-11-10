@@ -32,3 +32,8 @@ class FormatoInformeTest(SimpleTestCase):
         html = formato_informe("## Derivación externa\n\n### Antecedentes\n\n[PENDIENTE: antecedentes]")
         self.assertNotIn("Derivación externa", html)
         self.assertIn('<span class="marca-revisar">[PENDIENTE: antecedentes]</span>', html)
+
+    def test_titulo_sin_contenido_no_se_muestra(self):
+        html = formato_informe("### Antecedentes\n\nTexto.\n\n### Advertencias para la profesional\n")
+        self.assertIn("<h3>Antecedentes</h3>", html)
+        self.assertNotIn("Advertencias", html)

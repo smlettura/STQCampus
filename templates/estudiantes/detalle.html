@@ -69,8 +69,6 @@
   </div>
 </div>
 
-<div class="rejilla-2">
-<div>
 {% if casos %}
 <div class="tarjeta tabla-scroll">
   <h2>Casos</h2>
@@ -82,28 +80,7 @@
 </div>
 {% endif %}
 
-<div class="tarjeta">
-  <div class="cabecera-tarjeta"><h2>Línea de tiempo</h2>
-    {% if linea_total > linea|length %}<small class="ayuda">{{ linea|length }} más recientes de {{ linea_total }}</small>{% endif %}</div>
-  <ul class="linea">
-  {% for i in linea %}
-    <li class="{{ i.tipo }}{% if i.gravedad %} {{ i.gravedad }}{% endif %}">
-      <div class="cuando">{% if i.con_hora %}{{ i.fecha|date:"d-m-Y H:i" }}{% else %}{{ i.fecha|date:"d-m-Y" }}{% endif %} · <strong>{{ i.etiqueta }}</strong>
-        {% if i.autor %}· {{ i.autor }}{% endif %}
-        {% if i.privada %}<span class="insignia ambar">solo la autora</span>{% endif %}
-        {% if i.urgente %}<span class="insignia rojo">urgencia alta</span>{% endif %}
-        {% if i.caso and i.tipo != "caso" %}· <a href="{% url 'casos:detalle' i.caso.pk %}">{{ i.caso.get_tipo_proceso_display }}</a>{% endif %}</div>
-      {% if i.detalle %}<div class="cuando">{{ i.detalle }}</div>{% endif %}
-      {% if i.tipo == "documento" and i.id %}<div class="texto"><a href="{% url 'casos:descargar' i.id %}">{{ i.texto }}</a></div>
-      {% elif i.tipo == "evaluacion" and i.id %}<div class="texto"><a href="{% url 'evaluacion:detalle' i.id %}">{{ i.texto }}</a></div>
-      {% elif i.texto %}<div class="texto">{{ i.texto|truncatechars:320 }}</div>{% endif %}
-      {% if i.tipo == "caso" and i.caso %}<div class="texto"><a href="{% url 'casos:detalle' i.caso.pk %}">Ver el caso</a></div>{% endif %}
-    </li>
-  {% empty %}<p class="vacio">Aún no hay registros para este estudiante.</p>{% endfor %}
-  </ul>
-</div>
-</div>
-<div>
+<div class="rejilla iguales">
 {% if anotaciones is not None %}
   <div class="tarjeta">
     <div class="cabecera-tarjeta"><h2>Anotaciones</h2>
@@ -130,6 +107,9 @@
   </div>
   {% endif %}
 {% endif %}
+</div>
+
+<div class="rejilla iguales">
 {% if planes is not None %}
 <div class="tarjeta">
   <h2>Planes de apoyo</h2>
@@ -155,7 +135,6 @@
 </div>
 {% endif %}
 
-</div>
 </div>
 
 {% if consentimientos is not None %}

@@ -35,7 +35,8 @@ LATIDO_MAXIMO = datetime.timedelta(minutes=5)
 MAX_CARACTERES_RESPUESTA = 30_000
 
 TIPOS_INFORME = [("atencion", "Informe de atención"), ("derivacion_externa", "Derivación externa"),
-                 ("apoderado", "Informe para apoderado"), ("direccion", "Informe para dirección")]
+                 ("apoderado", "Informe para apoderado"), ("direccion", "Informe para dirección"),
+                 ("cronologico", "Línea de tiempo (resumen cronológico)")]
 SECCIONES = [("antecedentes", "Antecedentes"), ("desarrollo", "Desarrollo de las sesiones"),
              ("acuerdos", "Acuerdos y compromisos"), ("sugerencias", "Sugerencias de seguimiento")]
 SECCIONES_POR_DEFECTO = ("antecedentes", "desarrollo", "acuerdos")
@@ -82,12 +83,12 @@ def latido(agente, modelo=""):
 
 
 # ------------------------------------------------------------------ creación (lado de la profesional)
-def crear_solicitud(usuario, estudiante, caso, sesiones, tipo, secciones, indicaciones="", otros_nombres=()):
+def crear_solicitud(usuario, estudiante, caso, sesiones, tipo, secciones, indicaciones="", otros_nombres=(), periodo_meses=3):
     if not DISPONIBLE:
         raise ModuloIANoDisponible("El copiloto está deshabilitado en esta instalación.")
     if tipo not in dict(TIPOS_INFORME):
         raise ErrorSolicitud("Tipo de informe no válido.")
-    secciones = [s for s, _ in SECCIONES if s in secciones]
+    secciones = ["cronologico"] if tipo == "cronologico" else [s for s, _ in SECCIONES if s in secciones]
     if not secciones:
         raise ErrorSolicitud("Elija al menos una sección.")
     if not sesiones:
@@ -103,9 +104,15 @@ def crear_solicitud(usuario, estudiante, caso, sesiones, tipo, secciones, indica
         raise ErrorSolicitud("El asistente no puede: " + "; ".join(str(h) for h in pedidos)
                              + ". Quite esa indicación o redacte esa parte usted. " + guardas.AYUDA_FORMATOS)
     condiciones, ignoradas = guardas.filtrar_condiciones(indicaciones) if indicaciones else ("Ninguna.", [])
-    entrada = instrucciones.construir_entrada(sesiones, tipo, secciones, condiciones)
+    desde = timezone.localdate() - datetime.timedelta(days=30 * periodo_meses)
+    entrada = instrucciones.construir_entrada(sesiones, tipo, secciones, condiciones, estudiante=estudiante, caso=caso,
+                                              usuario=usuario, desde=desde)
     entrada, inyecciones = guardas.neutralizar_inyecciones(entrada)
     profesionales = [usuario, *[s.profesional for s in sesiones], estudiante.curso.profesor_jefe]
+    if caso is not None:              # autores que aparecen en antecedentes y registros del caso
+        profesionales += [caso.responsable, *[d.derivante for d in caso.derivaciones.select_related("derivante")],
+                          *[s.profesional for s in caso.sesiones.select_related("profesional")]]
+    profesionales = list({p.pk: p for p in profesionales if p is not None}.values())
     seud = Seudonimizador(estudiante, profesionales, otros_nombres=otros_nombres)
     try:
         seudonimizado = seud.aplicar(entrada)
@@ -205,7 +212,15 @@ def registrar_resultado(agente, id_solicitud, texto, modelo="", tokens_entrada=0
             alertas += ["Bloqueado: %s" % h for h in infr]
         else:
             estado = "generado"
-            alertas += motor.revisar_salida(entrada + "\n[ESTUDIANTE]", texto)   # el estudiante siempre es el sujeto
+            # El estudiante siempre es el sujeto. Los antecedentes («A · …») son contexto: que el borrador no los repita
+            # no es una pérdida, así que los marcadores «ausentes» se calculan solo sobre los registros de atención.
+            for a in motor.revisar_salida(entrada + "\n[ESTUDIANTE]", texto):
+                if not a.startswith("Marcadores ausentes"):
+                    alertas.append(a)
+            solo_registros = "\n".join(l for l in entrada.split("\n") if not l.startswith("A · "))
+            perdidos = motor.marcadores_en(solo_registros) - motor.marcadores_en(texto) - {"[ESTUDIANTE]"}
+            if perdidos:
+                alertas.append("Marcadores ausentes en la salida: " + ", ".join(sorted(perdidos)))
             if "[PENDIENTE" in texto.upper():
                 alertas.append("Hay partes marcadas [PENDIENTE]: faltaba información en las atenciones elegidas. "
                                "Complételas o bórrelas antes de validar el informe.")
@@ -248,7 +263,7 @@ def registrar_error(agente, id_solicitud, detalle):
 
 # ------------------------------------------------------------------ revisión humana (RF-18, RF-19)
 TIPO_INFORME_FICHA = {"atencion": "seguimiento", "derivacion_externa": "seguimiento", "apoderado": "familia",
-                      "direccion": "seguimiento"}
+                      "direccion": "seguimiento", "cronologico": "seguimiento"}
 
 
 def validar(usuario, contenido, texto_final, tipo_ficha=None):

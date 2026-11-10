@@ -193,4 +193,7 @@ def formato_informe(texto):
             parrafo.append(_en_linea(linea))
     cerrar_parrafo()
     cerrar_lista()
+    # Títulos sin contenido (por ejemplo «Advertencias para la profesional» vacío) no se muestran.
+    html = [h for k, h in enumerate(html)
+            if not (h.startswith(("<h3>", "<h4>")) and (k + 1 == len(html) or html[k + 1].startswith(("<h3>", "<h4>"))))]
     return mark_safe("\n".join(html))

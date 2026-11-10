@@ -23,7 +23,7 @@ GENERICOS = [
                                re.IGNORECASE)),
 ]
 ELIMINADOS = {"[RUT]", "[CORREO]", "[TELEFONO]", "[DIRECCION]"}
-_VOCALES = {"a": "aáà", "e": "eéè", "i": "iíì", "o": "oóò", "u": "uúùü"}
+_VOCALES = {"a": "aáà", "e": "eéè", "i": "iíì", "o": "oóò", "u": "uúùü", "n": "nñ", "c": "cç"}   # «Muñoz» = «Munoz»
 
 
 class SeudonimizacionIncompleta(Exception):

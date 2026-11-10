@@ -53,6 +53,14 @@ class SeudonimizacionTest(CopilotoBase):
         self.assertEqual(reidentificar("[ESTUDIANTE] y [PROFESIONAL_1]", seud.correspondencia()),
                          "Martina Pérez y Paula Soto Ruiz")
 
+    def test_nombres_con_enie(self):
+        self.profesor.nombre_completo = "Rodrigo Castro Muñoz"
+        self.profesor.save()
+        seud = Seudonimizador(self.estudiante, [self.profesor])
+        salida = seud.aplicar("Derivación de Rodrigo Castro Muñoz; luego Muñoz y Munoz conversan con Castro.")
+        self.assertNotIn("Mu", salida)
+        self.assertIn("Derivación de [PROFESIONAL_1];", salida)
+
     def test_bloquea_si_queda_un_identificador(self):
         seud = Seudonimizador(self.estudiante)
         seud.reglas = []                       # simula una regla faltante: la verificación final debe bloquear
@@ -114,6 +122,27 @@ class SolicitudTest(CopilotoBase):
         self.assertNotIn("Valentina", sol.texto_seudonimizado)
         self.assertNotIn("Josefa", sol.texto_seudonimizado)
         self.assertIn("[OTRA_PERSONA_1]", sol.texto_seudonimizado)
+
+    def test_entrada_incluye_antecedentes_de_la_ficha_y_del_caso(self):
+        from apps.casos.models import Hito
+        Hito.objects.create(caso=self.caso, tipo="objetivo", descripcion="Favorecer la integración con su grupo curso.")
+        self.consentir(self.estudiante, "uso_ia")
+        self.solicitar()
+        sol = SolicitudIA.objects.get()
+        self.assertIn("A · Antecedentes registrados en la ficha: [ESTUDIANTE]", sol.texto_seudonimizado)
+        self.assertIn("A · Objetivo", sol.texto_seudonimizado)
+        self.assertIn("Favorecer la integración con su grupo curso.", sol.texto_seudonimizado)
+        self.assertNotIn("Martina", sol.texto_seudonimizado)
+
+    def test_linea_de_tiempo_generada_por_la_ia(self):
+        self.consentir(self.estudiante, "uso_ia")
+        self.solicitar(tipo="cronologico", secciones=[])
+        sol = SolicitudIA.objects.get()
+        self.assertEqual(sol.secciones, "cronologico")
+        self.assertIn("Tarea: generar un resumen cronologico del caso.", sol.texto_seudonimizado)
+        self.assertIn("Sesión individual", sol.texto_seudonimizado)
+        self.assertNotIn("Martina", sol.texto_seudonimizado)
+        self.assertNotIn("Paula", sol.texto_seudonimizado)
 
     def test_no_acepta_atenciones_de_otro_caso(self):
         self.consentir(self.estudiante, "uso_ia")
@@ -214,8 +243,8 @@ class AgenteTest(CopilotoBase):
         self.assertNotIn("Marcadores que no estaban", c.alertas)
         self.assertIn("[PENDIENTE]", c.alertas)
         r = self.cliente(self.psicologa).get(reverse("ia:solicitud", args=[self.sol.pk]))
-        self.assertContains(r, "Vista previa")
-        self.assertContains(r, '<span class="marca-revisar">[PENDIENTE: acuerdos]</span>', html=False)
+        self.assertNotContains(r, "Vista previa")
+        self.assertContains(r, "[PENDIENTE: acuerdos]")
 
     def test_si_persiste_queda_bloqueado(self):
         self.api("tomar")

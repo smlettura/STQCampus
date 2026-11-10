@@ -707,8 +707,9 @@ fieldset.deshabilitado .opcion { cursor: not-allowed; }
   @page { margin: 2cm; }
 }
 
-/* Ficha del estudiante: primera fila con alturas iguales y línea de tiempo */
-.rejilla.iguales { align-items: stretch; }
+/* Ficha del estudiante: filas de tarjetas con alturas iguales */
+.rejilla.iguales { align-items: stretch; margin-bottom: 12px; }
+.rejilla.iguales > .tarjeta { margin-bottom: 0; }
 .linea li.caso::before { border-color: #1F3864; background: #DCE4F2; }
 .linea li.anotacion::before { border-color: var(--verde-medio); background: var(--verde-claro); }
 .linea li.anotacion.moderada::before { border-color: #C98F0E; background: var(--ambar-claro); }

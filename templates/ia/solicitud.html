@@ -23,14 +23,8 @@
 {% if alertas %}<section class="tarjeta" style="margin-bottom:12px" aria-labelledby="t-avisos"><h2 id="t-avisos">Revise antes de validar</h2>
   <ul>{% for a in alertas %}<li>{{ a }}</li>{% endfor %}</ul></section>{% endif %}
 {% if contenido.estado == "generado" %}
-<section class="tarjeta" aria-labelledby="t-vista"><h2 id="t-vista">Vista previa</h2>
-  <div class="documento-informe vista-previa">
-    <h2 class="doc-titulo">{{ titulo_tipo }}</h2>
-    <div class="doc-cuerpo">{{ contenido.texto_generado|formato_informe }}</div>
-  </div>
-</section>
-<form method="post" action="{% url 'ia:validar' contenido.pk %}" class="tarjeta" style="margin-top:12px">{% csrf_token %}
-  <label for="id_texto"><strong>Editar el borrador</strong></label>
+<form method="post" action="{% url 'ia:validar' contenido.pk %}" class="tarjeta">{% csrf_token %}
+  <label for="id_texto"><strong>Borrador (editable)</strong></label>
   <p class="ayuda">Formato: «### Título» para secciones, «* » para viñetas y **texto** para negrita. Al validar, el informe se muestra con el formato de documento.</p>
   <textarea class="campo" id="id_texto" name="texto" rows="22" style="width:100%;font-family:inherit">{{ contenido.texto_generado }}</textarea>
   <div class="campos dos" style="margin-top:10px">

@@ -46,6 +46,7 @@
       <fieldset{% if not disponible %} disabled{% endif %}>
         <legend class="oculto-accesible">Tipo de informe y secciones</legend>
         <div class="opciones">{% for c, t in tipos %}<label class="opcion"><input type="radio" name="tipo" value="{{ c }}"{% if forloop.first %} checked{% endif %}> {{ t }}</label>{% endfor %}</div>
+        <p class="ayuda" style="margin-top:8px">La «Línea de tiempo» ordena por fecha todos los registros del caso del periodo elegido; no usa las secciones de abajo.</p>
         <div class="campos dos" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--linea)">
           {% for c, t in secciones %}<label class="grupo-casilla" style="margin-bottom:8px"><input type="checkbox" name="secciones" value="{{ c }}"{% if c in secciones_defecto %} checked{% endif %}> <span>{{ t }}</span></label>{% endfor %}
         </div>

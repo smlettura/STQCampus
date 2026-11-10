@@ -11,16 +11,61 @@ from . import motor
 
 VERSION_PROMPT = motor.VERSION_PROMPT
 TITULOS_TIPO = {"atencion": "Informe de atención", "derivacion_externa": "Derivación externa",
-                "apoderado": "Informe para apoderado", "direccion": "Informe para dirección"}
+                "apoderado": "Informe para apoderado", "direccion": "Informe para dirección",
+                "cronologico": "Línea de tiempo del caso"}
 DESTINATARIOS = {"atencion": "Equipo psicosocial (ficha del estudiante)",
                  "derivacion_externa": "Red de salud o institución externa",
-                 "apoderado": "Apoderado del estudiante", "direccion": "Dirección del establecimiento"}
+                 "apoderado": "Apoderado del estudiante", "direccion": "Dirección del establecimiento",
+                 "cronologico": "Equipo psicosocial (ficha del estudiante)"}
 TITULOS_SECCION = {"antecedentes": "Antecedentes", "desarrollo": "Desarrollo de las sesiones",
-                   "acuerdos": "Acuerdos y compromisos", "sugerencias": "Sugerencias de seguimiento"}
+                   "acuerdos": "Acuerdos y compromisos", "sugerencias": "Sugerencias de seguimiento",
+                   "cronologico": "Resumen cronologico; Documentos de evidencia"}
 
 
 def texto_secciones(secciones):
     return "; ".join(TITULOS_SECCION[s] for s in secciones)
+
+
+def texto_antecedentes(estudiante, caso):
+    """Antecedentes registrados en la ficha y en el caso: sin ellos el modelo no tiene con qué redactar
+    «Antecedentes» y deja [PENDIENTE]. Se entregan como un registro más, así el modelo puede usarlos (regla 11)."""
+    e = estudiante
+    datos = ["%s %s" % (e.nombres, e.apellidos)]
+    if e.edad is not None:
+        datos.append("%s años" % e.edad)
+    datos.append("curso %s" % e.curso.nombre)
+    datos.append("necesidad educativa: %s" % e.get_necesidad_educativa_display())
+    if e.en_pie:
+        datos.append("participa en el Programa de Integración Escolar")
+    lineas = ["A · Antecedentes registrados en la ficha: " + "; ".join(datos) + "."]
+    if caso is not None:
+        lineas.append("A · Caso de %s abierto el %s (estado: %s)." % (
+            caso.get_tipo_proceso_display().lower(), caso.fecha_apertura.strftime("%d/%m/%Y"),
+            caso.get_estado_display().lower()))
+        for d in caso.derivaciones.select_related("derivante").order_by("fecha_hora"):
+            lineas.append("A · Derivación del %s por %s: %s" % (timezone.localtime(d.fecha_hora).strftime("%d/%m/%Y"),
+                                                              d.derivante.nombre_completo, (d.motivo or "").strip()))
+        for h in caso.hitos.order_by("fecha"):
+            lineas.append("A · %s (%s): %s" % (h.get_tipo_display(), h.fecha.strftime("%d/%m/%Y"), h.descripcion.strip()))
+    for p in e.planes.filter(estado="vigente"):
+        lineas.append("A · Plan de apoyo vigente (%s) desde el %s. Adecuaciones: %s" % (
+            p.get_tipo_display(), p.fecha_inicio.strftime("%d/%m/%Y"), (p.adecuaciones or "").strip()))
+    return "\n".join(lineas)
+
+
+def texto_registros(caso, usuario, desde):
+    """Registros del caso para la línea de tiempo (RF-17), con las mismas reglas de acceso que la ficha del caso."""
+    from apps.casos.servicios import linea_de_tiempo
+    lineas = []
+    for i in sorted(linea_de_tiempo(caso, usuario), key=lambda x: x["fecha"]):
+        if i.get("borrador") or i["fecha"].date() < desde:
+            continue
+        texto = (i.get("texto") or "").strip()
+        if i.get("detalle"):
+            texto = "%s. %s" % (i["detalle"], texto)
+        autor = " (%s)" % i["autor"] if i.get("autor") else ""
+        lineas.append("%s · %s%s: %s" % (i["fecha"].strftime("%d/%m/%Y"), i["etiqueta"], autor, texto or "(sin descripción)"))
+    return "\n".join(lineas)
 
 
 def texto_notas(sesiones):
@@ -42,12 +87,21 @@ def condiciones_fijas(secciones):
     return ""
 
 
-def construir_entrada(sesiones, tipo, secciones, condiciones_filtradas="Ninguna."):
+def construir_entrada(sesiones, tipo, secciones, condiciones_filtradas="Ninguna.", estudiante=None, caso=None,
+                      usuario=None, desde=None):
     """Texto con datos reales (se neutralizan órdenes y se seudonimiza después, antes de salir de AWS)."""
+    if tipo == "cronologico":
+        hoy = timezone.localdate()
+        return motor.PLANTILLA_RESUMEN.format(
+            desde=desde.strftime("%d/%m/%Y"), hasta=hoy.strftime("%d/%m/%Y"), condiciones=condiciones_filtradas,
+            registros=texto_registros(caso, usuario, desde))
+    notas = texto_notas(sesiones)
+    if estudiante is not None:
+        notas = texto_antecedentes(estudiante, caso) + "\n" + notas
     return motor.PLANTILLA_BORRADOR.format(
         tipo=TITULOS_TIPO[tipo], destinatario=DESTINATARIOS[tipo], secciones=texto_secciones(secciones),
         condiciones=motor._unir_condiciones(condiciones_fijas(secciones), condiciones_filtradas),
-        notas=texto_notas(sesiones), fragmentos="Ninguno.")
+        notas=notas, fragmentos="Ninguno.")
 
 
 def construir_mensajes(entrada_seudonimizada, aviso=""):

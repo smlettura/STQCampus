@@ -14,7 +14,7 @@ from apps.casos.models import SesionSeguimiento
 from apps.cuentas.permisos import denegar, permiso_requerido
 from apps.estudiantes.acceso import estudiantes_visibles
 
-from . import instrucciones, servicios
+from . import servicios
 from .models import ContenidoIA, RetroalimentacionIA, SolicitudIA
 
 
@@ -73,7 +73,8 @@ def solicitar(request):
     try:
         otros = [n for n in request.POST.get("otros_nombres", "").replace(";", ",").split(",") if n.strip()][:20]
         sol = servicios.crear_solicitud(u, estudiante, caso, sesiones, request.POST.get("tipo", ""),
-                                        request.POST.getlist("secciones"), request.POST.get("indicaciones", ""), otros)
+                                        request.POST.getlist("secciones"), request.POST.get("indicaciones", ""), otros,
+                                        periodo_meses=periodo)
     except servicios.ErrorSolicitud as e:
         messages.error(request, str(e))
         return redirect(volver)
@@ -101,8 +102,7 @@ def solicitud(request, pk):
         "posicion": SolicitudIA.objects.filter(estado="pendiente", fecha_creacion__lte=sol.fecha_creacion).count(),
         "tipos_ficha": Informe.TIPOS, "tipo_sugerido": servicios.TIPO_INFORME_FICHA.get(sol.tipo_informe, "seguimiento"),
         "motivos": RetroalimentacionIA.MOTIVOS, "en_espera": sol.estado in ("pendiente", "en_proceso"),
-        "alertas": [a for a in (sol.contenido.alertas if sol.contenido_id else "").split("\n") if a],
-        "titulo_tipo": instrucciones.TITULOS_TIPO.get(sol.tipo_informe, "Informe")})
+        "alertas": [a for a in (sol.contenido.alertas if sol.contenido_id else "").split("\n") if a]})
 
 
 def _contenido(request, pk):
