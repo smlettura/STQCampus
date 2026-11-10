@@ -6,6 +6,7 @@ app_name = "estudiantes"
 
 urlpatterns = [
     path("", views.lista, name="lista"),
+    path("sugerencias/", views.sugerencias, name="sugerencias"),
     path("nuevo/", views.crear, name="crear"),
     path("exportar/", views.exportar, name="exportar"),
     path("importar/", views.importar, name="importar"),

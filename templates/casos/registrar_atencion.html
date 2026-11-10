@@ -11,7 +11,7 @@
     <section class="tarjeta">
       <div class="paso"><span class="numero">1</span><div><h2>Estudiante</h2><p>A quién se atendió.</p></div></div>
       <form method="get" class="barra-tabla" role="search">
-        <label class="filtro-texto">{% icono "buscar" 16 %}<input type="search" name="q" value="{{ q }}" placeholder="Nombre, apellido o RUT del estudiante" aria-label="Buscar estudiante" autofocus></label>
+        <label class="filtro-texto">{% icono "buscar" 16 %}<input type="search" name="q" value="{{ q }}" autocomplete="off" data-sugerencias="{% url 'estudiantes:sugerencias' %}?activos=1" data-destino="?estudiante={id}" placeholder="Nombre, apellido o RUT del estudiante" aria-label="Buscar estudiante" autofocus></label>
         <button class="boton" type="submit">Buscar</button>
       </form>
       {% if resultados is not None %}

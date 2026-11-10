@@ -147,3 +147,92 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 });
+
+// Buscadores con lista desplegable: los campos con data-sugerencias="<url>" piden coincidencias a medida que se
+// escribe (desde 2 letras) y muestran una lista navegable con el teclado. Al elegir, se va a la ficha del resultado
+// o, si el campo tiene data-destino="?estudiante={id}", a esa dirección. Enter sin elegir envía el formulario normal.
+document.addEventListener("DOMContentLoaded", function () {
+  var contador = 0;
+  document.querySelectorAll("input[data-sugerencias]").forEach(function (campo) {
+    var id = "sugerencias-" + (++contador);
+    var lista = document.createElement("ul");
+    lista.className = "sugerencias";
+    lista.id = id;
+    lista.setAttribute("role", "listbox");
+    lista.hidden = true;
+    var contenedor = campo.closest("form, label, .filtro-texto") || campo.parentNode;
+    if (getComputedStyle(contenedor).position === "static") { contenedor.style.position = "relative"; }
+    contenedor.appendChild(lista);
+    campo.setAttribute("role", "combobox");
+    campo.setAttribute("aria-autocomplete", "list");
+    campo.setAttribute("aria-controls", id);
+    campo.setAttribute("aria-expanded", "false");
+
+    var items = [], activo = -1, temporizador = null, ultima = "", pedido = 0;
+
+    function cerrar() {
+      lista.hidden = true; activo = -1;
+      campo.setAttribute("aria-expanded", "false");
+      campo.removeAttribute("aria-activedescendant");
+    }
+    function destino(r) {
+      var plantilla = campo.getAttribute("data-destino");
+      return plantilla ? plantilla.replace("{id}", encodeURIComponent(r.id)) : r.url;
+    }
+    function marcar(i) {
+      var opciones = lista.querySelectorAll("li[role=option]");
+      opciones.forEach(function (li, k) { li.setAttribute("aria-selected", k === i ? "true" : "false"); });
+      activo = i;
+      if (i >= 0 && opciones[i]) {
+        campo.setAttribute("aria-activedescendant", opciones[i].id);
+        opciones[i].scrollIntoView({ block: "nearest" });
+      }
+    }
+    function pintar(resultados, texto) {
+      items = resultados;
+      lista.innerHTML = "";
+      if (!resultados.length) {
+        var vacio = document.createElement("li");
+        vacio.className = "sugerencias-vacio";
+        vacio.textContent = "Sin coincidencias para «" + texto + "»";
+        lista.appendChild(vacio);
+      }
+      resultados.forEach(function (r, k) {
+        var li = document.createElement("li");
+        li.id = id + "-" + k;
+        li.setAttribute("role", "option");
+        var t = document.createElement("strong"); t.textContent = r.texto;
+        var d = document.createElement("small"); d.textContent = r.detalle || "";
+        li.appendChild(t); li.appendChild(d);
+        li.addEventListener("mousedown", function (ev) { ev.preventDefault(); window.location.href = destino(r); });
+        li.addEventListener("mousemove", function () { marcar(k); });
+        lista.appendChild(li);
+      });
+      lista.hidden = false; activo = -1;
+      campo.setAttribute("aria-expanded", "true");
+    }
+    function buscar() {
+      var texto = campo.value.trim();
+      if (texto.length < 2) { cerrar(); ultima = texto; return; }
+      if (texto === ultima && !lista.hidden) { return; }
+      ultima = texto;
+      var url = new URL(campo.getAttribute("data-sugerencias"), window.location.href);
+      url.searchParams.set("q", texto);
+      var numero = ++pedido;
+      fetch(url.toString(), { headers: { "Accept": "application/json" }, credentials: "same-origin" })
+        .then(function (r) { return r.ok ? r.json() : { resultados: [] }; })
+        .then(function (datos) { if (numero === pedido && campo.value.trim() === texto) { pintar(datos.resultados || [], texto); } })
+        .catch(function () { cerrar(); });
+    }
+    campo.addEventListener("input", function () { clearTimeout(temporizador); temporizador = setTimeout(buscar, 180); });
+    campo.addEventListener("focus", function () { if (campo.value.trim().length >= 2) { ultima = ""; buscar(); } });
+    campo.addEventListener("blur", function () { setTimeout(cerrar, 120); });
+    campo.addEventListener("keydown", function (ev) {
+      if (lista.hidden || !items.length) { if (ev.key === "Escape") { cerrar(); } return; }
+      if (ev.key === "ArrowDown") { ev.preventDefault(); marcar(Math.min(activo + 1, items.length - 1)); }
+      else if (ev.key === "ArrowUp") { ev.preventDefault(); marcar(Math.max(activo - 1, 0)); }
+      else if (ev.key === "Enter" && activo >= 0) { ev.preventDefault(); window.location.href = destino(items[activo]); }
+      else if (ev.key === "Escape") { cerrar(); }
+    });
+  });
+});

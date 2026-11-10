@@ -17,6 +17,7 @@ urlpatterns = [
     path("restablecer/<uidb64>/<token>/", views.RestablecerConfirmarView.as_view(), name="restablecer_confirmar"),
     path("restablecer/listo/", views.RestablecerListoView.as_view(), name="restablecer_listo"),
     path("usuarios/", views.usuarios, name="usuarios"),
+    path("usuarios/sugerencias/", views.usuarios_sugerencias, name="usuarios_sugerencias"),
     path("usuarios/nuevo/", views.usuario_crear, name="usuario_crear"),
     path("usuarios/<int:pk>/", views.usuario, name="usuario"),
     path("usuarios/<int:pk>/restablecer-2fa/", views.restablecer_2fa, name="restablecer_2fa"),

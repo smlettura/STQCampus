@@ -715,3 +715,19 @@ fieldset.deshabilitado .opcion { cursor: not-allowed; }
 .linea li.anotacion.moderada::before { border-color: #C98F0E; background: var(--ambar-claro); }
 .linea li.anotacion.grave::before, .linea li.anotacion.gravisima::before { border-color: #B42318; background: #FDE8E7; }
 .documento-informe.vista-previa { padding: 24px 28px; max-width: none; }
+
+/* Lista desplegable de los buscadores */
+.sugerencias { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 60; margin: 0; padding: 4px;
+  list-style: none; background: #fff; border: 1px solid var(--linea); border-radius: var(--radio-sm);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, .14); max-height: 340px; overflow-y: auto; min-width: 280px; }
+.sugerencias li[role=option] { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border-radius: 6px;
+  cursor: pointer; color: var(--texto, #1b2430); }
+.sugerencias li[role=option] strong { font-size: 14px; font-weight: 600; }
+.sugerencias li[role=option] small { font-size: 12px; color: var(--suave); }
+.sugerencias li[aria-selected=true] { background: var(--primario-claro, #E8EEFB); }
+.sugerencias .sugerencias-vacio { padding: 10px; font-size: 13px; color: var(--suave); }
+
+/* Menú lateral: sin barra de desplazamiento gris (se sigue pudiendo desplazar con la rueda o el dedo) */
+.lateral { scrollbar-width: none; -ms-overflow-style: none; }
+.lateral::-webkit-scrollbar { width: 0; height: 0; display: none; }
+.tarjeta:has(.sugerencias:not([hidden])) { overflow: visible; position: relative; z-index: 5; }

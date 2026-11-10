@@ -24,7 +24,7 @@
     <form class="filtro-texto" method="get" role="search">
       {% icono "buscar" 16 %}
       {% for k, v in request.GET.items %}{% if k != "q" and k != "pagina" and k != "ir" %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
-      <input type="search" name="q" value="{{ q }}" placeholder="Filtrar esta tabla" aria-label="Filtrar por nombre o RUT">
+      <input type="search" name="q" value="{{ q }}" autocomplete="off" data-sugerencias="{% url 'estudiantes:sugerencias' %}" placeholder="Filtrar esta tabla" aria-label="Filtrar por nombre o RUT">
     </form>
     {% if "estudiante.importar" in permisos %}
     <a class="boton secundario" href="{% url 'estudiantes:importar' %}">Importar Excel</a>

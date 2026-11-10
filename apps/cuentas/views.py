@@ -264,3 +264,17 @@ def restablecer_2fa(request, pk):
     registrar(request.user, "modificacion", "usuario", obj.pk, detalle="segundo factor restablecido")
     messages.success(request, "Segundo factor restablecido: el usuario deberá configurarlo en su próximo ingreso.")
     return redirect("cuentas:usuario", obj.pk)
+
+
+@permiso_requerido("usuarios.administrar")
+def usuarios_sugerencias(request):
+    """Lista desplegable del buscador de usuarios (solo administración de cuentas)."""
+    from django.http import JsonResponse
+    from django.urls import reverse
+    q = request.GET.get("q", "").strip()[:60]
+    if len(q) < 2:
+        return JsonResponse({"resultados": []})
+    qs = (Usuario.objects.filter(nombre_completo__icontains=q) | Usuario.objects.filter(correo__icontains=q)).order_by("nombre_completo")
+    return JsonResponse({"resultados": [
+        {"id": u.pk, "texto": u.nombre_completo, "detalle": u.correo, "url": reverse("cuentas:usuario", args=[u.pk])}
+        for u in qs[:8]]})

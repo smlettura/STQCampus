@@ -451,3 +451,25 @@ def egresados(request):
         "total": todos.count(), "ultimo": ultimo, "anio_actual": hoy.year,
         "terminales_actuales": list(actual.cursos_terminales.ordenados()) if actual else [],
         "ultimo_anio_egreso": todos.aggregate(m=Max("fecha_egreso"))["m"]})
+
+
+# ---------------------------------------------------------------------------------------------- sugerencias
+MAX_SUGERENCIAS = 8
+
+
+@permiso_requerido("estudiante.ver_todos", "estudiante.ver_curso")
+def sugerencias(request):
+    """Lista desplegable de los buscadores: estudiantes visibles para el usuario que coinciden con lo escrito
+    (nombre, apellido o RUT). Solo devuelve lo que el usuario ya puede ver en la lista de estudiantes."""
+    from django.http import JsonResponse
+    from apps.core.templatetags.ui import rut as formato_rut
+    q = " ".join(request.GET.get("q", "").split())[:60]
+    if len(q) < 2:
+        return JsonResponse({"resultados": []})
+    qs = estudiantes_visibles(request.user)
+    if request.GET.get("activos") == "1":
+        qs = qs.activos()
+    qs = qs.buscar(q).select_related("curso").order_by("apellido_paterno", "apellido_materno", "primer_nombre")
+    return JsonResponse({"resultados": [
+        {"id": e.pk, "texto": "%s %s" % (e.nombres, e.apellidos), "detalle": "%s · %s" % (formato_rut(e.rut), e.curso.nombre),
+         "url": reverse("estudiantes:detalle", args=[e.pk])} for e in qs[:MAX_SUGERENCIAS]]})

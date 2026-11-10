@@ -332,3 +332,18 @@ def descartar_borrador(request, pk):
     sesion.delete()
     messages.info(request, "Borrador descartado.")
     return redirect(reverse("casos:registrar_atencion") + "?estudiante=%d" % estudiante_id)
+
+
+@permiso_requerido("caso.ver_equipo", "caso.ver_pie")
+def sugerencias(request):
+    """Lista desplegable del filtro de «Fichas de estudiantes»: casos visibles del estudiante buscado."""
+    from django.http import JsonResponse
+    q = " ".join(request.GET.get("q", "").split())[:60]
+    if len(q) < 2:
+        return JsonResponse({"resultados": []})
+    qs = (casos_visibles(request.user).filter(estudiante__in=Estudiante.objects.buscar(q))
+          .select_related("estudiante", "estudiante__curso").order_by("estado", "-fecha_apertura"))
+    return JsonResponse({"resultados": [
+        {"id": c.pk, "texto": "%s %s" % (c.estudiante.nombres, c.estudiante.apellidos),
+         "detalle": "%s · %s · %s" % (c.get_tipo_proceso_display(), c.get_estado_display(), c.estudiante.curso.nombre),
+         "url": reverse("casos:detalle", args=[c.pk])} for c in qs[:8]]})

@@ -63,7 +63,7 @@
         {% if "estudiante.ver_todos" in permisos or "estudiante.ver_curso" in permisos %}
         <form class="buscador" method="get" action="{% url 'estudiantes:lista' %}" role="search">
           {% icono "buscar" 16 %}
-          <input type="search" name="q" id="buscador-global" placeholder="Ir a un estudiante por nombre o RUT…" aria-label="Buscar estudiante por nombre o RUT" aria-keyshortcuts="Control+K">
+          <input type="search" name="q" id="buscador-global" autocomplete="off" data-sugerencias="{% url 'estudiantes:sugerencias' %}" placeholder="Ir a un estudiante por nombre o RUT…" aria-label="Buscar estudiante por nombre o RUT" aria-keyshortcuts="Control+K">
           <input type="hidden" name="ir" value="1">
           <span class="kbd" aria-hidden="true">Ctrl K</span>
         </form>

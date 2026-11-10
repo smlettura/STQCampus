@@ -13,7 +13,7 @@
     </nav>
     <form class="filtro-texto" method="get" role="search">{% icono "buscar" 16 %}
       {% for k, v in request.GET.items %}{% if k != "q" and k != "pagina" %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
-      <input type="search" name="q" value="{{ q }}" placeholder="Filtrar por estudiante o RUT" aria-label="Filtrar por estudiante"></form>
+      <input type="search" name="q" value="{{ q }}" autocomplete="off" data-sugerencias="{% url 'casos:sugerencias' %}" placeholder="Filtrar por estudiante o RUT" aria-label="Filtrar por estudiante"></form>
     <details class="menu-fila desplegable">
       <summary class="boton secundario">Tipo: {% if tipo %}{% for c, t in tipos %}{% if c == tipo %}{{ t }}{% endif %}{% endfor %}{% else %}Todos{% endif %} {% icono "chevron" 14 %}</summary>
       <div class="menu-flotante"><a href="{% url_con tipo='' %}"{% if not tipo %} class="activo"{% endif %}>Todos</a>
