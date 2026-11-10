@@ -127,3 +127,68 @@ def url_con(context, **cambios):
             params[k] = v
     params.pop("pagina", None) if "pagina" not in cambios else None
     return "?" + urlencode(params)
+
+
+# ---------------------------------------------------------------------------------------------- texto de informes
+_NEGRITA = __import__("re").compile(r"\*\*(.+?)\*\*")
+_MARCA = __import__("re").compile(r"\[(FUERA DE MI ALCANCE|VERIFICAR|CONTENIDO OMITIDO)([^\]]*)\]")
+
+
+def _en_linea(texto):
+    from django.utils.html import escape
+    t = escape(texto)
+    t = _NEGRITA.sub(r"<strong>\1</strong>", t)
+    return _MARCA.sub(r'<span class="marca-revisar">[\1\2]</span>', t)
+
+
+@register.filter
+def formato_informe(texto):
+    """Presenta el texto de un informe (formato simple tipo Markdown que usan las profesionales y el copiloto):
+    «#/##/###» títulos, «* » o «- » viñetas, «1. » listas numeradas y **negrita**. Todo se escapa antes de dar formato,
+    así que no se puede inyectar HTML. Omite un título inicial «Informe…», porque el documento ya lo muestra."""
+    import re
+    lineas = (texto or "").replace("\r\n", "\n").split("\n")
+    while lineas and not lineas[0].strip():
+        lineas.pop(0)
+    if lineas and re.match(r"^#{1,3}\s+informe\b", lineas[0].strip(), re.I):
+        lineas.pop(0)
+    html, parrafo, lista = [], [], None
+
+    def cerrar_parrafo():
+        if parrafo:
+            html.append("<p>%s</p>" % "<br>".join(parrafo))
+            parrafo.clear()
+
+    def cerrar_lista():
+        nonlocal lista
+        if lista:
+            html.append("</%s>" % lista)
+            lista = None
+
+    for cruda in lineas:
+        linea = cruda.strip()
+        titulo = re.match(r"^(#{1,6})\s+(.*)$", linea)
+        vineta = re.match(r"^[*\-•]\s+(.*)$", linea)
+        numero = re.match(r"^\d+[.)]\s+(.*)$", linea)
+        if not linea:
+            cerrar_parrafo()
+            cerrar_lista()
+        elif titulo:
+            cerrar_parrafo()
+            cerrar_lista()
+            nivel = "h3" if len(titulo.group(1)) <= 3 else "h4"
+            html.append("<%s>%s</%s>" % (nivel, _en_linea(titulo.group(2).strip("# ")), nivel))
+        elif vineta or numero:
+            cerrar_parrafo()
+            tipo = "ul" if vineta else "ol"
+            if lista != tipo:
+                cerrar_lista()
+                html.append("<%s>" % tipo)
+                lista = tipo
+            html.append("<li>%s</li>" % _en_linea((vineta or numero).group(1)))
+        else:
+            cerrar_lista()
+            parrafo.append(_en_linea(linea))
+    cerrar_parrafo()
+    cerrar_lista()
+    return mark_safe("\n".join(html))

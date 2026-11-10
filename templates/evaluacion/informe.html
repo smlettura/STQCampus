@@ -22,5 +22,25 @@
 </div>
 {% if informe.contenido_ia_id %}<div class="aviso info">Redactado a partir de un borrador generado con IA ({{ informe.contenido_ia.modelo }}){% if informe.contenido_ia.validador_id %} y validado por {{ informe.contenido_ia.validador.nombre_completo }} el {{ informe.contenido_ia.fecha_validacion|date:"d-m-Y H:i" }}{% endif %}.</div>{% endif %}
 {% if informe.tipo == "preliminar_fudei" %}<div class="aviso info">Versión preliminar de apoyo interno: el FUDEI oficial se completa en el formato vigente del Mineduc (RF-06).</div>{% endif %}
-<div class="tarjeta"><div class="texto-ia" style="border-style:solid;background:#fff">{{ informe.contenido }}</div></div>
+{% with e=informe.caso.estudiante ia=informe.contenido_ia %}
+<article class="documento-informe">
+  <header class="doc-membrete">
+    <div class="doc-colegio">{{ NOMBRE_COLEGIO }}<small>Equipo psicosocial</small></div>
+    <div class="doc-confidencial">Documento confidencial</div>
+  </header>
+  <h2 class="doc-titulo">{{ informe.get_tipo_display }}</h2>
+  <dl class="doc-datos">
+    <div><dt>Estudiante</dt><dd>{{ e.nombres }} {{ e.apellidos }}</dd></div>
+    <div><dt>Curso</dt><dd>{{ e.curso.nombre }}</dd></div>
+    <div><dt>Fecha</dt><dd>{% if informe.fecha_entrega %}{{ informe.fecha_entrega|date:"d-m-Y" }}{% elif ia.fecha_validacion %}{{ ia.fecha_validacion|date:"d-m-Y" }}{% else %}{% now "d-m-Y" %}{% endif %}</dd></div>
+    <div><dt>Elaborado por</dt><dd>{% if ia.validador %}{{ ia.validador.nombre_completo }}{% else %}{{ informe.caso.responsable.nombre_completo }}{% endif %}</dd></div>
+  </dl>
+  <div class="doc-cuerpo">{{ informe.contenido|formato_informe }}</div>
+  <footer class="doc-firma">
+    <div class="doc-linea-firma"></div>
+    <div>{% if ia.validador %}{{ ia.validador.nombre_completo }}{% if ia.validador.especialidad %} · {{ ia.validador.especialidad }}{% endif %}{% else %}{{ informe.caso.responsable.nombre_completo }}{% if informe.caso.responsable.especialidad %} · {{ informe.caso.responsable.especialidad }}{% endif %}{% endif %}</div>
+    <div class="doc-nota">Información sensible de un menor de edad, protegida por la Ley 19.628 y la Ley 21.719. Uso exclusivo del establecimiento y de la familia del estudiante.</div>
+  </footer>
+</article>
+{% endwith %}
 {% endblock %}
