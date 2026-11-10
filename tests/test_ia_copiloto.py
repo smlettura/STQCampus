@@ -282,6 +282,9 @@ class RevisionHumanaTest(CopilotoBase):
         self.assertEqual((self.contenido.estado, self.contenido.validador), ("validado", self.psicologa))
         self.sol.refresh_from_db()
         self.assertEqual((self.sol.estado, self.sol.correspondencia), ("cerrada", ""))
+        r = self.cliente(self.psicologa).get(reverse("evaluacion:informe", args=[informe.pk]))   # la vista del informe
+        self.assertContains(r, "Redactado a partir de un borrador generado con IA")
+        self.assertContains(r, "Texto revisado por la psicóloga sobre Martina.")
 
     def test_otra_profesional_no_valida(self):
         r = self.cliente(self.psicologa2).post(reverse("ia:validar", args=[self.contenido.pk]), {"texto": "x" * 30})
