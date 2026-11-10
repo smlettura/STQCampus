@@ -190,7 +190,7 @@ def registrar_resultado(agente, id_solicitud, texto, modelo="", tokens_entrada=0
         entrada = sol.texto_seudonimizado
         secciones = instrucciones.texto_secciones(sol.secciones.split(","))
         infr = guardas.revisar_limites(guardas.sin_condiciones(entrada), texto, entrada)
-        infr += guardas.secciones_ajenas(texto, secciones)
+        infr += guardas.secciones_ajenas(texto, secciones, extra=(instrucciones.TITULOS_TIPO.get(sol.tipo_informe, ""),))
         if infr and not sol.reintentado:
             sol.reintentado, sol.fecha_toma = True, timezone.now()
             sol.save(update_fields=["reintentado", "fecha_toma"])
@@ -205,7 +205,10 @@ def registrar_resultado(agente, id_solicitud, texto, modelo="", tokens_entrada=0
             alertas += ["Bloqueado: %s" % h for h in infr]
         else:
             estado = "generado"
-            alertas += motor.revisar_salida(entrada, texto)
+            alertas += motor.revisar_salida(entrada + "\n[ESTUDIANTE]", texto)   # el estudiante siempre es el sujeto
+            if "[PENDIENTE" in texto.upper():
+                alertas.append("Hay partes marcadas [PENDIENTE]: faltaba información en las atenciones elegidas. "
+                               "Complételas o bórrelas antes de validar el informe.")
             alertas += ["Se eliminó una sección que no se había pedido: %s" % h.fragmento.strip()[:70] for h in quitadas]
             omit = guardas.omisiones_riesgo(entrada, texto)
             if omit:

@@ -14,7 +14,7 @@ from apps.casos.models import SesionSeguimiento
 from apps.cuentas.permisos import denegar, permiso_requerido
 from apps.estudiantes.acceso import estudiantes_visibles
 
-from . import servicios
+from . import instrucciones, servicios
 from .models import ContenidoIA, RetroalimentacionIA, SolicitudIA
 
 
@@ -101,7 +101,8 @@ def solicitud(request, pk):
         "posicion": SolicitudIA.objects.filter(estado="pendiente", fecha_creacion__lte=sol.fecha_creacion).count(),
         "tipos_ficha": Informe.TIPOS, "tipo_sugerido": servicios.TIPO_INFORME_FICHA.get(sol.tipo_informe, "seguimiento"),
         "motivos": RetroalimentacionIA.MOTIVOS, "en_espera": sol.estado in ("pendiente", "en_proceso"),
-        "alertas": [a for a in (sol.contenido.alertas if sol.contenido_id else "").split("\n") if a]})
+        "alertas": [a for a in (sol.contenido.alertas if sol.contenido_id else "").split("\n") if a],
+        "titulo_tipo": instrucciones.TITULOS_TIPO.get(sol.tipo_informe, "Informe")})
 
 
 def _contenido(request, pk):

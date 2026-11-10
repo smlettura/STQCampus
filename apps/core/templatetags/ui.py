@@ -131,7 +131,7 @@ def url_con(context, **cambios):
 
 # ---------------------------------------------------------------------------------------------- texto de informes
 _NEGRITA = __import__("re").compile(r"\*\*(.+?)\*\*")
-_MARCA = __import__("re").compile(r"\[(FUERA DE MI ALCANCE|VERIFICAR|CONTENIDO OMITIDO)([^\]]*)\]")
+_MARCA = __import__("re").compile(r"\[(FUERA DE MI ALCANCE|VERIFICAR|CONTENIDO OMITIDO|PENDIENTE)([^\]]*)\]")
 
 
 def _en_linea(texto):
@@ -150,7 +150,9 @@ def formato_informe(texto):
     lineas = (texto or "").replace("\r\n", "\n").split("\n")
     while lineas and not lineas[0].strip():
         lineas.pop(0)
-    if lineas and re.match(r"^#{1,3}\s+informe\b", lineas[0].strip(), re.I):
+    # El documento ya muestra el título: se omite un título inicial «Informe…» o uno de nivel 1-2 seguido de secciones.
+    if lineas and (re.match(r"^#{1,3}\s+informe\b", lineas[0].strip(), re.I) or
+                   (re.match(r"^#{1,2}\s", lineas[0].strip()) and any(re.match(r"^###\s", l.strip()) for l in lineas[1:]))):
         lineas.pop(0)
     html, parrafo, lista = [], [], None
 

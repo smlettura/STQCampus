@@ -27,3 +27,8 @@ class FormatoInformeTest(SimpleTestCase):
     def test_texto_vacio(self):
         self.assertEqual(formato_informe(""), "")
         self.assertEqual(formato_informe(None), "")
+
+    def test_omite_titulo_inicial_de_nivel_2_y_resalta_pendiente(self):
+        html = formato_informe("## Derivación externa\n\n### Antecedentes\n\n[PENDIENTE: antecedentes]")
+        self.assertNotIn("Derivación externa", html)
+        self.assertIn('<span class="marca-revisar">[PENDIENTE: antecedentes]</span>', html)

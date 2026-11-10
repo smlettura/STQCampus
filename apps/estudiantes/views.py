@@ -174,7 +174,47 @@ def detalle(request, pk):
         ctx["resumen_anotaciones"] = dict(e.anotaciones.values_list("tipo").annotate(n=Count("id")))
     if u.tiene_permiso("convivencia.ver"):
         ctx["registros"] = e.registros_conductuales.all()[:10]
+    ctx["linea"], ctx["linea_total"] = _linea_estudiante(u, e, ctx)
     return render(request, "estudiantes/detalle.html", ctx)
+
+
+MAX_LINEA = 40
+
+
+def _linea_estudiante(usuario, e, ctx):
+    """Registro cronológico único del estudiante (RF-01, RF-03): reúne la línea de tiempo de cada caso visible
+    —con las mismas reglas de acceso a notas que la ficha del caso— más anotaciones, situación conductual y planes,
+    solo si el usuario puede verlos. Devuelve los MAX_LINEA más recientes y el total."""
+    from apps.casos.servicios import _como_fecha_hora, linea_de_tiempo
+    items = []
+    for c in ctx["casos"]:
+        nombre = c.get_tipo_proceso_display()
+        for i in linea_de_tiempo(c, usuario):
+            if i.get("borrador"):
+                continue
+            items.append({**i, "caso": c})
+        items.append({"tipo": "caso", "etiqueta": "Apertura del caso: %s" % nombre, "fecha": _como_fecha_hora(c.fecha_apertura),
+                      "con_hora": False, "autor": c.responsable.nombre_completo if c.responsable_id else "", "caso": c,
+                      "texto": ""})
+        if c.fecha_cierre:
+            items.append({"tipo": "caso", "etiqueta": "Cierre del caso: %s" % nombre, "fecha": _como_fecha_hora(c.fecha_cierre),
+                          "con_hora": False, "caso": c, "texto": ""})
+    if ctx.get("anotaciones") is not None:
+        for a in e.anotaciones.select_related("registrada_por"):
+            items.append({"tipo": "anotacion", "etiqueta": "Anotación %s" % a.get_tipo_display().lower(),
+                          "fecha": _como_fecha_hora(a.fecha), "con_hora": False,
+                          "autor": str(a.registrada_por) if a.registrada_por_id else "", "texto": a.descripcion,
+                          "gravedad": a.tipo})
+    if ctx.get("registros") is not None:
+        for r in e.registros_conductuales.all():
+            items.append({"tipo": "documento", "etiqueta": "Situación conductual: %s" % r.get_categoria_display().lower(),
+                          "fecha": _como_fecha_hora(r.fecha), "con_hora": False, "texto": r.descripcion})
+    if ctx.get("planes") is not None:
+        for p in ctx["planes"]:
+            items.append({"tipo": "evaluacion", "etiqueta": "Inicio del plan de apoyo: %s" % p.get_tipo_display(),
+                          "fecha": _como_fecha_hora(p.fecha_inicio), "con_hora": False, "texto": ""})
+    items.sort(key=lambda i: i["fecha"], reverse=True)
+    return items[:MAX_LINEA], len(items)
 
 
 @permiso_requerido("estudiante.ver_todos", "estudiante.ver_curso")

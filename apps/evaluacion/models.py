@@ -180,8 +180,8 @@ class Informe(models.Model):
         if self.estado in ("validado", "entregado"):
             if not (self.contenido or "").strip():
                 errores["contenido"] = "El informe no tiene contenido."
-            if "[VERIFICAR" in (self.contenido or "").upper():
-                errores["contenido"] = "El texto aún tiene marcas [VERIFICAR]; revíselas antes de validar."
+            if "[VERIFICAR" in (self.contenido or "").upper() or "[PENDIENTE" in (self.contenido or "").upper():
+                errores["contenido"] = "El texto aún tiene marcas [VERIFICAR] o [PENDIENTE]; revíselas antes de validar."
             if self.contenido_ia_id and self.contenido_ia.estado != "validado":
                 errores["estado"] = ("El informe usa un borrador del módulo de IA que aún no tiene validación humana "
                                      "(RF-18).")

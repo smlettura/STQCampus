@@ -706,3 +706,11 @@ fieldset.deshabilitado .opcion { cursor: not-allowed; }
   .encabezado, .aviso { display: none !important; }
   @page { margin: 2cm; }
 }
+
+/* Ficha del estudiante: primera fila con alturas iguales y línea de tiempo */
+.rejilla.iguales { align-items: stretch; }
+.linea li.caso::before { border-color: #1F3864; background: #DCE4F2; }
+.linea li.anotacion::before { border-color: var(--verde-medio); background: var(--verde-claro); }
+.linea li.anotacion.moderada::before { border-color: #C98F0E; background: var(--ambar-claro); }
+.linea li.anotacion.grave::before, .linea li.anotacion.gravisima::before { border-color: #B42318; background: #FDE8E7; }
+.documento-informe.vista-previa { padding: 24px 28px; max-width: none; }

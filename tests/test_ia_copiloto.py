@@ -202,6 +202,21 @@ class AgenteTest(CopilotoBase):
         self.assertEqual(self.sol.contenido.estado, "generado")
         self.assertIn("FUERA DE MI ALCANCE", self.sol.contenido.alertas)
 
+    def test_titulo_del_tipo_y_estudiante_no_generan_avisos_falsos(self):
+        self.api("tomar")
+        texto = ("## Informe para apoderado\n\n### Antecedentes\n[ESTUDIANTE] asistió a dos atenciones.\n\n"
+                 "### Acuerdos y compromisos\n[PENDIENTE: acuerdos]")
+        self.api("resultado", {"texto": texto}, kwargs={"pk": self.sol.pk})
+        self.sol.refresh_from_db()
+        c = self.sol.contenido
+        self.assertEqual(c.estado, "generado")
+        self.assertIn("## Informe para apoderado", c.texto_generado)       # el título no se trata como sección ajena
+        self.assertNotIn("Marcadores que no estaban", c.alertas)
+        self.assertIn("[PENDIENTE]", c.alertas)
+        r = self.cliente(self.psicologa).get(reverse("ia:solicitud", args=[self.sol.pk]))
+        self.assertContains(r, "Vista previa")
+        self.assertContains(r, '<span class="marca-revisar">[PENDIENTE: acuerdos]</span>', html=False)
+
     def test_si_persiste_queda_bloqueado(self):
         self.api("tomar")
         malo = "## Antecedentes\n[ESTUDIANTE] presenta un nivel de riesgo alto."
