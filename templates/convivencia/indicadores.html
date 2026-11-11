@@ -6,13 +6,13 @@
 <div class="indicadores">
   <div class="indicador verde"><div class="cabeza"><span>Índice de bienestar</span><a href="#definicion">Ver detalle</a></div>
     <div class="valor">{{ d.indice|pct }}</div><div class="detalle">Estado general del año · {{ d.con_senales }} de {{ d.total_activos|miles }} con señales de riesgo</div></div>
-  <div class="indicador rojo"><div class="cabeza"><span>Casos activos</span><a href="{% url 'casos:lista' %}">Ver detalle</a></div>
+  <div class="indicador rojo"><div class="cabeza"><span>Casos activos</span><a {% if "caso.ver_equipo" in permisos or "caso.ver_pie" in permisos %}href="{% url 'casos:lista' %}"{% endif %}>Ver detalle</a></div>
     <div class="valor">{{ d.casos_activos|miles }}</div><div class="detalle">Abiertos a la fecha</div></div>
-  <div class="indicador"><div class="cabeza"><span>Casos resueltos este mes</span><a href="{% url 'casos:lista' %}?estado=cerrado">Ver detalle</a></div>
+  <div class="indicador"><div class="cabeza"><span>Casos resueltos este mes</span><a {% if "caso.ver_equipo" in permisos or "caso.ver_pie" in permisos %}href="{% url 'casos:lista' %}?estado=cerrado"{% endif %}>Ver detalle</a></div>
     <div class="valor">{{ d.resueltos_mes|miles }}</div><div class="detalle">{{ nombre_mes|capfirst }}</div></div>
-  <div class="indicador"><div class="cabeza"><span>En seguimiento</span><a href="{% url 'casos:lista' %}">Ver detalle</a></div>
+  <div class="indicador"><div class="cabeza"><span>En seguimiento</span><a {% if "caso.ver_equipo" in permisos or "caso.ver_pie" in permisos %}href="{% url 'casos:lista' %}"{% endif %}>Ver detalle</a></div>
     <div class="valor">{{ d.en_seguimiento|miles }}</div><div class="detalle">Estudiantes con acompañamiento</div></div>
-  <div class="indicador ambar"><div class="cabeza"><span>Alertas pendientes</span><a href="{% url 'alertas:lista' %}">Ver detalle</a></div>
+  <div class="indicador ambar"><div class="cabeza"><span>Alertas pendientes</span>{% if "alerta.registrar" in permisos or "alerta.gestionar" in permisos or "alerta.ver_constancias" in permisos %}<a href="{% url 'alertas:lista' %}">Ver detalle</a>{% endif %}</div>
     <div class="valor">{{ d.alertas_pendientes|miles }}</div><div class="detalle">Sin revisar</div></div>
   <div class="indicador gris"><div class="cabeza"><span>Tasa de resolución</span><a href="{% url 'reportes:panel' %}">Ver detalle</a></div>
     <div class="valor">{{ d.tasa_resolucion|pct }}</div><div class="detalle">Casos cerrados sobre casos abiertos en {{ filtros.anio }} ({{ d.cerrados_anio }} de {{ d.abiertos_anio }})</div></div>

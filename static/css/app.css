@@ -731,3 +731,12 @@ fieldset.deshabilitado .opcion { cursor: not-allowed; }
 .lateral { scrollbar-width: none; -ms-overflow-style: none; }
 .lateral::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .tarjeta:has(.sugerencias:not([hidden])) { overflow: visible; position: relative; z-index: 5; }
+a.kpi:not([href]) { cursor: default; }
+a.kpi:not([href]):hover { border-color: var(--borde); box-shadow: none; }
+
+/* Páginas de un solo formulario: título y formulario centrados como una columna */
+.columna-form { max-width: 760px; margin: 0 auto; }
+.columna-form .formulario { max-width: none; }
+/* Pantallas anchas: el contenido no se estira más de 1440 px y queda centrado */
+.contenido > * { max-width: 1440px; margin-left: auto; margin-right: auto; }
+.contenido > .columna-form { max-width: 760px; }

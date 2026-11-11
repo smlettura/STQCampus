@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}Configurar segundo factor{% endblock %}
 {% block contenido %}
+<div class="columna-form">
 <div class="tarjeta formulario">
   <h1>Configure su segundo factor</h1>
   <p class="sub">Su perfil accede a información sensible, por lo que el ingreso exige un código temporal además de la
@@ -22,5 +23,6 @@
     <input type="hidden" name="next" value="{{ next }}">
     <div class="pie-form"><button type="submit" class="boton">Activar segundo factor</button></div>
   </form>
+</div>
 </div>
 {% endblock %}

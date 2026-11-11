@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}{{ titulo }}{% endblock %}
 {% block contenido %}
+<div class="columna-form">
 <div class="encabezado"><div><h1>{{ titulo }}</h1>{% if ayuda %}<p class="sub">{{ ayuda }}</p>{% endif %}</div></div>
 {% if advertencia %}<div class="aviso advertencia">{{ advertencia }}</div>{% endif %}
 <div class="tarjeta formulario">
@@ -13,5 +14,6 @@
       <small class="ayuda">Los campos con <span class="req">*</span> son obligatorios.</small>
     </div>
   </form>
+</div>
 </div>
 {% endblock %}

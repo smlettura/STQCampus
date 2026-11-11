@@ -72,8 +72,9 @@
         {% if filtros_barra %}
         <div class="filtros-barra solo-escritorio">{% include "comun/_filtros_barra.html" %}</div>
         {% endif %}
+        {% if "alerta.registrar" in permisos or "alerta.gestionar" in permisos or "alerta.ver_constancias" in permisos %}
         <a class="campana" href="{% url 'alertas:lista' %}" aria-label="Alertas{% if alertas_sin_leer %}: {{ alertas_sin_leer }} sin leer{% endif %}">
-          {% icono "campana" %}{% if alertas_sin_leer %}<span class="punto"></span>{% endif %}</a>
+          {% icono "campana" %}{% if alertas_sin_leer %}<span class="punto"></span>{% endif %}</a>{% endif %}
         {% block accion_barra %}
         {% if accion_barra %}
         {% if "alerta.registrar" in permisos %}<a class="boton-icono boton-alerta" href="{% url 'alertas:registrar' %}" aria-label="Registrar alerta de riesgo" title="Registrar alerta de riesgo">{% icono "alertas" 18 %}</a>{% endif %}
