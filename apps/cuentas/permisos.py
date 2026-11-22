@@ -26,7 +26,7 @@ PERMISOS = {
     "plan.ver_adecuaciones": "Ver las adecuaciones de los planes de apoyo del curso a cargo",
     "plan.gestionar": "Registrar planes de apoyo (PACI, PAI, Decreto 67)",
     "informe.gestionar": "Elaborar informes (versión preliminar FUDEI, Informe para la Familia, seguimiento)",
-    "ia.usar": "Usar el módulo de IA para informes (en entrenamiento)",
+    "ia.usar": "Usar el módulo de IA para informes (en configuración)",
     "convivencia.ver": "Ver conflictos, anotaciones y situación conductual",
     "convivencia.gestionar": "Registrar conflictos, mediaciones y situación conductual",
     "anotacion.registrar": "Registrar anotaciones (el profesor jefe, solo en su curso)",

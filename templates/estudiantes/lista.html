@@ -24,7 +24,7 @@
     <form class="filtro-texto" method="get" role="search">
       {% icono "buscar" 16 %}
       {% for k, v in request.GET.items %}{% if k != "q" and k != "pagina" and k != "ir" %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
-      <input type="search" name="q" value="{{ q }}" placeholder="Filtrar esta tabla" aria-label="Filtrar por nombre o RUT">
+      <input type="search" name="q" value="{{ q }}" autocomplete="off" data-sugerencias="{% url 'estudiantes:sugerencias' %}" placeholder="Filtrar esta tabla" aria-label="Filtrar por nombre o RUT">
     </form>
     {% if "estudiante.importar" in permisos %}
     <a class="boton secundario" href="{% url 'estudiantes:importar' %}">Importar Excel</a>
@@ -40,11 +40,11 @@
     <tbody>
     {% for e in pagina %}
     <tr>
-      {% if "estudiante.importar" in permisos %}<td class="col-check"><input type="checkbox" name="ids" value="{{ e.pk }}" form="form-lista" aria-label="Seleccionar {{ e }}"></td>{% endif %}
+      {% if "estudiante.importar" in permisos %}<td class="col-check"><input type="checkbox" name="ids" value="{{ e.pk }}" form="form-lista" aria-label="Seleccionar {{ e|priv }}"></td>{% endif %}
       <td class="num-fila">{{ forloop.counter0|add:inicio|stringformat:"02d" }}</td>
-      <td data-rotulo="Estudiante"><a href="{% url 'estudiantes:detalle' e.pk %}" style="color:var(--texto);font-weight:600">{{ e.nombres }} {{ e.apellidos }}</a>
-        {% if e.nombre_social %}<span class="sub-celda">Nombre social: {{ e.nombre_social }}</span>{% endif %}</td>
-      <td data-rotulo="RUT" class="nowrap">{{ e.rut|rut }}</td>
+      <td data-rotulo="Estudiante"><a href="{% url 'estudiantes:detalle' e.pk %}" style="color:var(--texto);font-weight:600">{{ e.nombres|priv:"nombre" }} {{ e.apellidos|priv:"nombre" }}</a>
+        {% if e.nombre_social %}<span class="sub-celda">Nombre social: {{ e.nombre_social|priv:"nombre" }}</span>{% endif %}</td>
+      <td data-rotulo="RUT" class="nowrap">{{ e.rut|rut|priv:"rut" }}</td>
       <td data-rotulo="Curso">{{ e.curso.nombre }}</td>
       <td data-rotulo="Programa">{% if e.en_pie %}<span class="insignia">PIE</span>{% endif %}{% if e.prioritario %} <span class="insignia ambar">PRIORITARIO</span>{% endif %}{% if not e.en_pie and not e.prioritario %}—{% endif %}</td>
       <td data-rotulo="Estado"><span class="estado {{ e.estado|color_estado }}">{{ e.get_estado_display }}</span></td>

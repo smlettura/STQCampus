@@ -68,26 +68,17 @@ def error_404(request, exception=None):
 @csrf_exempt
 @require_POST
 def tarea_programada(request, nombre):
-    """Punto de entrada que invoca Azure Functions (temporizador) con un token compartido guardado en Key Vault."""
+    """Punto HTTP de respaldo para las tareas programadas (requiere TAREAS_TOKEN). En AWS las tareas se ejecutan con
+    el comando «ejecutar_tarea», que dispara EventBridge Scheduler mediante Systems Manager."""
     token = getattr(settings, "TAREAS_TOKEN", "")
     enviado = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
     if not token or not hmac.compare_digest(token, enviado):
         raise Http404
-    from apps.auditoria.servicios import exportar_dia, registrar
-    from apps.cumplimiento.models import RetencionEliminacion
-    from apps.cumplimiento.servicios import ejecutar, proponer_retenciones
-    from apps.evaluacion.servicios import procesar_reevaluaciones
+    from apps.auditoria.servicios import registrar
+    from apps.core.tareas import TAREAS
 
-    if nombre == "diaria":
-        resultado = {"avisos_reevaluacion": procesar_reevaluaciones(),
-                     "bitacora_exportada": exportar_dia(timezone.localdate() - datetime.timedelta(days=1))[1]}
-    elif nombre == "mensual":
-        ejecutadas = 0
-        for r in RetencionEliminacion.objects.filter(estado="autorizada", autorizada_por__isnull=False):
-            ejecutar(r)
-            ejecutadas += 1
-        resultado = {"retenciones_propuestas": proponer_retenciones(), "retenciones_ejecutadas": ejecutadas}
-    else:
+    if nombre not in TAREAS:
         raise Http404
+    resultado = TAREAS[nombre]()
     registrar(None, "modificacion", "tarea_programada", None, detalle=nombre)
     return JsonResponse(resultado)

@@ -169,7 +169,7 @@ class Hito(models.Model):
     id = models.BigAutoField(primary_key=True, db_column="id_hito")
     caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name="hitos", db_column="id_caso")
     tipo = models.CharField("tipo", max_length=20, choices=TIPOS)
-    descripcion = models.TextField("descripción", validators=[validar_texto_minimo(5)])
+    descripcion = TextoCifrado("descripción", validators=[validar_texto_minimo(5)])
     fecha = models.DateField("fecha", default=timezone.localdate, validators=[validar_no_futuro])
     visible_profesor_jefe = models.BooleanField("visible para el profesor jefe", default=False)
 
@@ -193,7 +193,7 @@ class Documento(models.Model):
     id = models.BigAutoField(primary_key=True, db_column="id_documento")
     caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name="documentos", db_column="id_caso")
     tipo = models.CharField("tipo", max_length=20, choices=TIPOS)
-    nombre_archivo = models.CharField("nombre del archivo", max_length=160)
+    nombre_archivo = TextoCifrado("nombre del archivo", max_length=160)   # puede contener el nombre del estudiante
     ruta_objeto = models.CharField("ruta del objeto", max_length=255, unique=True, editable=False)
     hash_sha256 = models.CharField("huella SHA-256", max_length=64, editable=False)
     fecha_carga = models.DateTimeField("fecha de carga", default=timezone.now, editable=False)

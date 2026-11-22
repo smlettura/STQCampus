@@ -42,6 +42,20 @@ def atenciones(desde, hasta):
     }
 
 
+def modulo_ia(t0, t1):
+    """RF-19: borradores del copiloto en el periodo, por estado, y salidas marcadas como incorrectas o problemáticas."""
+    from apps.ia.models import ContenidoIA, RetroalimentacionIA, SolicitudIA
+    contenidos = dict(ContenidoIA.objects.filter(fecha_generacion__gte=t0, fecha_generacion__lt=t1)
+                      .values_list("estado").annotate(n=Count("id")))
+    solicitudes = dict(SolicitudIA.objects.filter(fecha_creacion__gte=t0, fecha_creacion__lt=t1)
+                       .values_list("estado").annotate(n=Count("id")))
+    return {"generados": sum(contenidos.values()), "validados": contenidos.get("validado", 0),
+            "descartados": contenidos.get("descartado", 0),
+            "sin_respuesta": solicitudes.get("error", 0) + solicitudes.get("expirada", 0),
+            "observaciones": RetroalimentacionIA.objects.filter(contenido__fecha_generacion__gte=t0,
+                                                                contenido__fecha_generacion__lt=t1).count()}
+
+
 def resumen(desde=None, hasta=None):
     hoy = timezone.localdate()
     desde = desde or hoy - datetime.timedelta(days=365)
@@ -79,5 +93,5 @@ def resumen(desde=None, hasta=None):
         "arco_pendientes": SolicitudARCO.objects.filter(estado__in=["recibida", "en_analisis"]).count(),
         "arco_vencidas": SolicitudARCO.objects.filter(estado__in=["recibida", "en_analisis"], fecha_limite__lt=hoy).count(),
         "atenciones": atenciones(desde, hasta),
-        "modulo_ia": "en entrenamiento",
+        "modulo_ia": modulo_ia(t0, t1),
     }

@@ -84,10 +84,15 @@ def configurar_2fa(request):
             registrar(usuario, "modificacion", "usuario", usuario.pk, detalle="segundo factor configurado")
             messages.success(request, "Segundo factor activado. Desde ahora se le pedirá un código al ingresar.")
             return redirect(_siguiente(request))
-        form.add_error("codigo", "El código no es válido. Revise la hora de su teléfono e intente de nuevo.")
+        desfase = totp.desfase_probable(secreto, form.cleaned_data["codigo"])
+        form.add_error("codigo", totp.mensaje_desfase(desfase) if desfase is not None else
+                       "El código no es válido. Use la cuenta «STQCampus Bienestar» que acaba de escanear en esta "
+                       "pantalla (si tiene otras con el mismo nombre, de intentos anteriores, elimínelas) y escriba el "
+                       "código que se muestra ahora.")
     uri = totp.uri_aprovisionamiento(usuario.correo, secreto)
     return render(request, "cuentas/configurar_2fa.html", {
-        "form": form, "qr": mark_safe(totp.qr_svg(uri)), "secreto": secreto, "next": _siguiente(request, "")})
+        "form": form, "qr": mark_safe(totp.qr_svg(uri)), "secreto": secreto, "next": _siguiente(request, ""),
+        "ahora": timezone.localtime()})
 
 
 @login_required
@@ -111,8 +116,36 @@ def verificar_2fa(request):
             logout(request)
             messages.error(request, "Demasiados códigos incorrectos. Vuelva a iniciar sesión.")
             return redirect("cuentas:login")
-        form.add_error("codigo", "Código incorrecto. Le quedan %d intentos." % (MAX_INTENTOS_2FA - intentos))
-    return render(request, "cuentas/verificar_2fa.html", {"form": form, "next": _siguiente(request, "")})
+        desfase = totp.desfase_probable(usuario.secreto_totp, form.cleaned_data["codigo"])
+        form.add_error("codigo", (totp.mensaje_desfase(desfase) + " " if desfase is not None else "Código incorrecto. ")
+                       + "Le quedan %d intentos." % (MAX_INTENTOS_2FA - intentos))
+    return render(request, "cuentas/verificar_2fa.html", {"form": form, "next": _siguiente(request, ""),
+                                                          "ahora": timezone.localtime()})
+
+
+# ------------------------------------------------------------------ modo privado
+
+
+@login_required
+@require_POST
+def privacidad_ocultar(request):
+    """Un clic: oculta los datos sensibles en todas las pantallas de esta sesión."""
+    from apps.core import privacidad
+    request.session[privacidad.CLAVE_SESION] = True
+    registrar(request.user, "modificacion", "sesion", request.user.pk, detalle="modo privado activado")
+    messages.info(request, "Modo privado activado: los datos sensibles quedan ocultos.")
+    return redirect(_siguiente(request))
+
+
+@login_required
+@require_POST
+def privacidad_mostrar(request):
+    """Un clic: vuelve a mostrar los datos sensibles en esta sesión."""
+    from apps.core import privacidad
+    request.session[privacidad.CLAVE_SESION] = False
+    registrar(request.user, "modificacion", "sesion", request.user.pk, detalle="modo privado desactivado")
+    messages.info(request, "Modo privado desactivado: los datos vuelven a verse.")
+    return redirect(_siguiente(request))
 
 
 @login_required
@@ -256,3 +289,17 @@ def restablecer_2fa(request, pk):
     registrar(request.user, "modificacion", "usuario", obj.pk, detalle="segundo factor restablecido")
     messages.success(request, "Segundo factor restablecido: el usuario deberá configurarlo en su próximo ingreso.")
     return redirect("cuentas:usuario", obj.pk)
+
+
+@permiso_requerido("usuarios.administrar")
+def usuarios_sugerencias(request):
+    """Lista desplegable del buscador de usuarios (solo administración de cuentas)."""
+    from django.http import JsonResponse
+    from django.urls import reverse
+    q = request.GET.get("q", "").strip()[:60]
+    if len(q) < 2:
+        return JsonResponse({"resultados": []})
+    qs = (Usuario.objects.filter(nombre_completo__icontains=q) | Usuario.objects.filter(correo__icontains=q)).order_by("nombre_completo")
+    return JsonResponse({"resultados": [
+        {"id": u.pk, "texto": u.nombre_completo, "detalle": u.correo, "url": reverse("cuentas:usuario", args=[u.pk])}
+        for u in qs[:8]]})

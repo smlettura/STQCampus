@@ -40,8 +40,12 @@
   <div class="tarjeta"><h2>Alertas por tipo de situación</h2>
     <ul class="barras">{% for s in r.alertas_por_tipo %}<li class="rojo"><span>{{ s.etiqueta }}</span><span class="pista"><span class="relleno" style="width:{{ s.porcentaje }}%;display:block"></span></span><strong class="num">{{ s.valor }}</strong></li>{% endfor %}</ul></div>
   <div class="tarjeta"><h2>Módulo de IA</h2>
-    <p><span class="insignia morado">EN ENTRENAMIENTO</span></p>
-    <p class="ayuda">Cuando el módulo esté disponible, aquí se mostrarán los borradores generados, validados y descartados, y las
-      salidas marcadas como incorrectas por las profesionales (RF-19).</p></div>
+    <ul class="barras">
+      <li><span>Borradores generados</span><strong class="num">{{ r.modulo_ia.generados }}</strong></li>
+      <li><span>Validados por una profesional</span><strong class="num">{{ r.modulo_ia.validados }}</strong></li>
+      <li><span>Descartados</span><strong class="num">{{ r.modulo_ia.descartados }}</strong></li>
+      <li><span>Solicitudes sin respuesta (error o expiradas)</span><strong class="num">{{ r.modulo_ia.sin_respuesta }}</strong></li>
+      <li class="rojo"><span>Salidas marcadas como incorrectas o problemáticas</span><strong class="num">{{ r.modulo_ia.observaciones }}</strong></li>
+    </ul></div>
 </div>
 {% endblock %}

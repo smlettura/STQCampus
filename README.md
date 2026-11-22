@@ -27,8 +27,9 @@ profesores jefe y Dirección. Cada rol ve solo lo que necesita.
 > - Las 16 pantallas del prototipo v1 están implementadas en Django con MySQL 8.
 > - Se suman los módulos de los requisitos que el prototipo no dibujó: derivaciones, evaluación PIE, alertas de riesgo,
 >   cumplimiento (ARCO+, retención de 15 años), bitácora y seguridad.
-> - El **módulo de IA está en entrenamiento**. La pantalla «Generar informe (IA)» ya existe y muestra los datos reales que
->   usará, pero todavía no genera contenido (ver [Módulo de IA](#módulo-de-ia-en-entrenamiento)).
+> - El **módulo de IA está en configuración**: Gemma 2 9B se usa sin reentrenamiento, contextualizado con un Modelfile
+>   (`docs/ia/Modelfile`). La pantalla «Generar informe (IA)» ya existe y muestra los datos reales que usará, pero todavía
+>   no genera contenido (ver [Módulo de IA](#módulo-de-ia-configurado-inferencia-por-implementar)).
 
 > Los datos de demostración son **ficticios**. No cargue datos reales de estudiantes en un equipo de desarrollo.
 
@@ -61,7 +62,7 @@ profesores jefe y Dirección. Cada rol ve solo lo que necesita.
   hitos, documentos cifrados e informes.
 - **Derivaciones** al equipo y **avisos de reevaluación PIE**.
 - **Estadísticas** agregadas, sin datos personales.
-- **Generar informe (IA)**: espacio reservado mientras el modelo se entrena.
+- **Generar informe (IA)**: espacio reservado mientras se implementa la inferencia del modelo configurado.
 
 **Gestión de estudiantes**
 - Lista con indicadores (total, activos, inactivos, tasas de retiro y repitencia, cursos), pestañas y filtros por año,
@@ -137,7 +138,7 @@ profesores jefe y Dirección. Cada rol ve solo lo que necesita.
 │   ├── evaluacion/         # evaluación diagnóstica PIE, planes de apoyo, informes, avisos de reevaluación
 │   ├── convivencia/        # conflictos, anotaciones, situación conductual, protocolos, plan de gestión, indicadores
 │   ├── alertas/            # alertas de riesgo, enrutamiento según el reglamento, constancias y denuncia
-│   ├── ia/                 # módulo de IA reservado (esquema de datos y pantalla; en entrenamiento)
+│   ├── ia/                 # módulo de IA reservado (esquema de datos y pantalla; inferencia por implementar)
 │   ├── cumplimiento/       # consentimientos, ARCO+, retención de 15 años
 │   ├── reportes/           # estadísticas agregadas sin datos personales
 │   └── api/                # API REST mínima
@@ -225,6 +226,15 @@ Los perfiles clínicos, la Directora y el administrador configuran el segundo fa
 con Google o Microsoft Authenticator. Solo en desarrollo, `python manage.py codigo_2fa <correo>` muestra el código
 vigente de un usuario.
 
+Si los códigos no funcionan:
+- **Reloj desajustado.** La hora del computador y la del teléfono deben coincidir; la pantalla del QR muestra la hora del
+  computador. En Windows active «Establecer la hora automáticamente» y pulse «Sincronizar ahora». En el teléfono, active
+  la hora automática.
+- **Cuentas repetidas en la aplicación.** Elimine las cuentas «STQCampus Bienestar» de intentos anteriores: cada
+  configuración crea una clave nueva.
+- **Empezar de nuevo.** `python manage.py restablecer_2fa <correo>` hace que el usuario vea un QR nuevo en su próximo
+  ingreso.
+
 La demostración trae:
 - los 14 cursos del año (Prekínder a 4° Medio) y unos 70 estudiantes con RUT válidos pero inventados;
 - casos y atenciones, alertas, anotaciones, conflictos, registros conductuales y protocolos;
@@ -254,6 +264,14 @@ La demostración trae:
 Para un administrador real, en lugar de los datos de demostración, use `python manage.py createsuperuser`. Crea un
 usuario con el rol Administrador.
 
+### Producción en AWS
+
+El piloto se despliega en AWS (us-east-1): EC2 t4g.small (ARM) con Docker detrás de Amazon CloudFront y de un proxy
+nginx con TLS en la instancia, RDS for MySQL 8.4 (db.t4g.micro),
+S3 para adjuntos (SSE-KMS) y para la copia inmutable de la bitácora (Object Lock), Secrets Manager y KMS, CloudWatch
+y EventBridge Scheduler, que ejecuta `python manage.py ejecutar_tarea diaria|mensual` mediante Systems Manager.
+Las variables de AWS están en `.env.example` y los pasos en `deploy/aws/README.md`.
+
 ### Con Docker (MySQL + aplicación + buzón de correo)
 
 ```bash
@@ -279,7 +297,12 @@ Son 108 pruebas. Cubren:
   contraseña y primer ingreso.
 - **Módulo de IA reservado**: no genera contenido y no muestra notas.
 
-## Módulo de IA (en entrenamiento)
+## Módulo de IA (configurado, inferencia por implementar)
+
+El copiloto usa **Gemma 2 9B sin reentrenamiento ni ajuste fino**. Se configura con un Modelfile de Ollama
+(`docs/ia/Modelfile`): prompt de sistema con los límites del módulo, resumen de la normativa, ejemplos anonimizados y
+parámetros de generación. El modelo corre en un equipo propio del proyecto, fuera de AWS: un agente consulta la cola
+de la plataforma por HTTPS con un token y solo recibe texto seudonimizado.
 
 La IA aún no genera contenido; solo tiene su espacio reservado:
 - **Pantalla**: `/ia/generar-informe/`, con el diseño del prototipo. Lista las atenciones reales del estudiante (solo
@@ -329,8 +352,17 @@ El sistema maneja datos personales sensibles de estudiantes. Por eso considera:
   - las notas «solo para mí» no las ve el resto del equipo;
   - el administrador no accede a contenido clínico.
   Todo acceso denegado queda en la bitácora.
-- **Cifrado AES-256-GCM** de relatos y notas: atenciones, derivaciones, alertas, diagnósticos, informes, conflictos y
-  protocolos. Los adjuntos y las evidencias se cifran y se verifica su SHA-256 al descargarlos.
+- **Cifrado AES-256-GCM** de 22 columnas de texto libre: atenciones, derivaciones, hitos, alertas, tipo de NEE,
+  diagnósticos, adecuaciones, informes, anotaciones, situación conductual, conflictos, protocolos, nombres de archivos
+  adjuntos y el secreto del segundo factor. Los adjuntos y las evidencias se cifran y se verifica su SHA-256 al
+  descargarlos. Los mensajes de confirmación se guardan en la sesión, no en cookies.
+- **Si actualiza una base que ya tiene datos reales** (migraciones `0002_cifrar_textos_sensibles`): la migración cifra
+  los valores existentes en su lugar, pero MySQL conserva copias antiguas en texto claro hasta que se limpian. Después
+  de migrar, y con un respaldo nuevo ya hecho:
+  1. `OPTIMIZE TABLE hito, documento, anotacion, registro_conductual, evidencia_actividad, evaluacion_diagnostica,
+     plan_apoyo, retroalimentacion_ia;`
+  2. `FLUSH BINARY LOGS;` y luego `PURGE BINARY LOGS TO '<archivo binlog actual>';`
+  3. Elimine los respaldos anteriores a la migración, porque contienen esos textos sin cifrar.
 - **Bitácora de auditoría** encadenada por SHA-256. Registra consultas de fichas y exportaciones (Excel y PDF). En MySQL
   el usuario de la aplicación no puede modificarla ni borrarla.
 - **Sesión**:
@@ -351,6 +383,7 @@ El sistema maneja datos personales sensibles de estudiantes. Por eso considera:
 |---|---|---|
 | Diaria | Avisos de reevaluación PIE y exportación inmutable de la bitácora del día anterior | `procesar_reevaluaciones`, `exportar_bitacora` |
 | Mensual | Propone eliminaciones por retención y ejecuta las autorizadas por la Directora | `proponer_retenciones`, `ejecutar_retenciones` |
+| Mensual | Verifica que todo dato cifrado tenga formato válido y se descifre, y que los adjuntos conserven su SHA-256 (no muestra datos) | `verificar_cifrado --adjuntos` |
 
 ## Puntos por confirmar con el colegio
 

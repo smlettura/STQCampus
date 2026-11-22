@@ -14,7 +14,7 @@
     <thead><tr><th>Estudiante</th><th>RUT</th><th>Curso de egreso</th><th>Fecha de egreso</th><th class="col-acciones"></th></tr></thead>
     <tbody>
     {% for e in pagina %}<tr>
-      <td data-rotulo="Estudiante">{{ e.nombre_lista }}</td><td data-rotulo="RUT" class="nowrap">{{ e.rut|rut }}</td>
+      <td data-rotulo="Estudiante">{{ e.nombre_lista|priv:"nombre" }}</td><td data-rotulo="RUT" class="nowrap">{{ e.rut|rut|priv:"rut" }}</td>
       <td data-rotulo="Curso">{{ e.curso.nombre }} {{ e.curso.anio_escolar }}</td><td data-rotulo="Egreso" class="nowrap">{{ e.fecha_egreso|date:"d/m/Y" }}</td>
       <td class="col-acciones"><a class="boton contorno" href="{% url 'estudiantes:detalle' e.pk %}">Ver ficha</a></td>
     </tr>{% endfor %}

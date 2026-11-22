@@ -62,7 +62,9 @@ def verificar_cadena():
 
 def exportar_dia(fecha):
     """Escribe una copia de los eventos del día en formato JSON Lines y la deja de solo lectura (WORM local).
-    En producción el archivo se sube al contenedor «auditoria-inmutable» con política de retención."""
+    Con ALMACENAMIENTO=s3 el archivo se guarda en el bucket de la bitácora, que tiene Object Lock (retención WORM)."""
+    if getattr(settings, "ALMACENAMIENTO", "local") == "s3":
+        return _exportar_dia_s3(fecha)
     carpeta = settings.BITACORA_EXPORT_DIR
     carpeta.mkdir(parents=True, exist_ok=True)
     ruta = carpeta / ("bitacora_%s.jsonl" % fecha.isoformat())
@@ -81,3 +83,22 @@ def exportar_dia(fecha):
             n += 1
     os.chmod(ruta, 0o444)
     return ruta, n
+
+
+def _exportar_dia_s3(fecha):
+    from django.core.files.base import ContentFile
+    from django.core.files.storage import storages
+
+    almacen = storages["bitacora"]
+    nombre = "bitacora_%s.jsonl" % fecha.isoformat()
+    if almacen.exists(nombre):
+        return nombre, 0
+    inicio = timezone.make_aware(datetime.datetime.combine(fecha, datetime.time.min))
+    fin = inicio + datetime.timedelta(days=1)
+    lineas = [json.dumps({"id": e.id, "fecha_hora": e.fecha_hora.isoformat(), "usuario": e.usuario_id,
+                          "accion": e.accion, "entidad": e.entidad, "id_entidad": e.id_entidad,
+                          "detalle": e.detalle, "ip": e.ip_origen, "hash_previo": e.hash_previo,
+                          "hash_evento": e.hash_evento}, ensure_ascii=False)
+              for e in EventoAuditoria.objects.filter(fecha_hora__gte=inicio, fecha_hora__lt=fin).order_by("id").iterator()]
+    almacen.save(nombre, ContentFile(("\n".join(lineas) + ("\n" if lineas else "")).encode("utf-8")))
+    return nombre, len(lineas)

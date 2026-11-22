@@ -1,0 +1,44 @@
+# Proxy SIN CloudFront (variante para AWS Academy Learner Lab, que no permite crear distribuciones de CloudFront).
+# El navegador llega directo a la EC2: nginx termina el TLS con un certificado de Let's Encrypt para el dominio
+# público (${DOMINIO_ORIGEN}, por ejemplo app.<dominio>) y pasa a Gunicorn por la red interna de Docker.
+# Se usa con SIN_CLOUDFRONT=1 en iniciar.sh. El grupo de seguridad debe admitir 443 (y 80, solo para redirigir)
+# desde Internet. Pierde, frente a la arquitectura del informe, la capa de borde de CloudFront (TLS en el borde,
+# AWS Shield Standard y ocultar la IP del servidor): es solo para el entorno académico de demostración.
+
+server {
+    listen 80 default_server;
+    server_tokens off;
+    location / {
+        return 301 https://${DOMINIO_ORIGEN}$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl default_server;
+    ssl_reject_handshake on;              # rechaza conexiones que no pidan el nombre del sitio (escaneos por IP)
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMINIO_ORIGEN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMINIO_ORIGEN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMINIO_ORIGEN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:directo:5m;
+
+    client_max_body_size 12m;             # igual que DATA_UPLOAD_MAX_MEMORY_SIZE de Django
+    server_tokens off;
+
+    location / {
+        proxy_pass http://app:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Origen-STQ "";
+        proxy_read_timeout 60s;
+    }
+}

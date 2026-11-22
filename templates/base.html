@@ -10,6 +10,7 @@
   <link rel="preload" href="{% static 'fonts/manrope-latin-700-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <script src="{% static 'js/app.js' %}" defer></script>
+  {% block cabeza_extra %}{% endblock %}
 </head>
 <body>
 <a class="saltar" href="#contenido">Saltar al contenido</a>
@@ -62,7 +63,7 @@
         {% if "estudiante.ver_todos" in permisos or "estudiante.ver_curso" in permisos %}
         <form class="buscador" method="get" action="{% url 'estudiantes:lista' %}" role="search">
           {% icono "buscar" 16 %}
-          <input type="search" name="q" id="buscador-global" placeholder="Ir a un estudiante por nombre o RUT…" aria-label="Buscar estudiante por nombre o RUT" aria-keyshortcuts="Control+K">
+          <input type="search" name="q" id="buscador-global" autocomplete="off" data-sugerencias="{% url 'estudiantes:sugerencias' %}" placeholder="Ir a un estudiante por nombre o RUT…" aria-label="Buscar estudiante por nombre o RUT" aria-keyshortcuts="Control+K">
           <input type="hidden" name="ir" value="1">
           <span class="kbd" aria-hidden="true">Ctrl K</span>
         </form>
@@ -71,8 +72,18 @@
         {% if filtros_barra %}
         <div class="filtros-barra solo-escritorio">{% include "comun/_filtros_barra.html" %}</div>
         {% endif %}
+        {% if "alerta.registrar" in permisos or "alerta.gestionar" in permisos or "alerta.ver_constancias" in permisos %}
         <a class="campana" href="{% url 'alertas:lista' %}" aria-label="Alertas{% if alertas_sin_leer %}: {{ alertas_sin_leer }} sin leer{% endif %}">
-          {% icono "campana" %}{% if alertas_sin_leer %}<span class="punto"></span>{% endif %}</a>
+          {% icono "campana" %}{% if alertas_sin_leer %}<span class="punto"></span>{% endif %}</a>{% endif %}
+        {% if modo_privado %}
+        <form class="form-icono" method="post" action="{% url 'cuentas:privacidad_mostrar' %}">{% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button class="boton-icono boton-privado activo" type="submit" title="Mostrar datos sensibles" aria-label="Modo privado activo. Mostrar datos sensibles">{% icono "ojo_tachado" 18 %}</button></form>
+        {% else %}
+        <form class="form-icono" method="post" action="{% url 'cuentas:privacidad_ocultar' %}">{% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button class="boton-icono boton-privado" type="submit" title="Ocultar datos sensibles" aria-label="Ocultar datos sensibles">{% icono "ojo" 18 %}</button></form>
+        {% endif %}
         {% block accion_barra %}
         {% if accion_barra %}
         {% if "alerta.registrar" in permisos %}<a class="boton-icono boton-alerta" href="{% url 'alertas:registrar' %}" aria-label="Registrar alerta de riesgo" title="Registrar alerta de riesgo">{% icono "alertas" 18 %}</a>{% endif %}
@@ -85,7 +96,16 @@
     </header>
     <main class="contenido" id="contenido">
       {% if filtros_barra %}<div class="filtros-barra solo-movil">{% include "comun/_filtros_barra.html" %}</div>{% endif %}
-      {% for m in messages %}<div class="aviso {{ m.tags }}" role="status">{{ m }}</div>{% endfor %}
+      {% if modo_privado %}<div class="banda-privado" role="status">{% icono "ojo_tachado" 16 %}<span><strong>Modo privado.</strong> Los nombres, RUT, contactos y notas están ocultos.</span>
+        <form method="post" action="{% url 'cuentas:privacidad_mostrar' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit" class="enlace">Mostrar datos</button></form></div>{% endif %}
+      {% if messages %}<div class="toasts" aria-live="polite">
+        {% for m in messages %}<div class="toast {{ m.tags }}" role="{% if 'error' in m.tags %}alert{% else %}status{% endif %}">
+          <span class="toast-icono" aria-hidden="true">{% if 'success' in m.tags %}{% icono "exito" 18 %}{% elif 'error' in m.tags %}{% icono "error" 18 %}{% elif 'warning' in m.tags %}{% icono "advertencia" 18 %}{% else %}{% icono "info" 18 %}{% endif %}</span>
+          <div class="toast-texto">{{ m }}</div>
+          <button type="button" class="toast-cerrar" aria-label="Cerrar aviso">{% icono "cerrar" 14 %}</button>
+          <span class="toast-barra" aria-hidden="true"></span>
+        </div>{% endfor %}
+      </div>{% endif %}
       {% block contenido %}{% endblock %}
     </main>
   </div>

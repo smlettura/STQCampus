@@ -3,18 +3,97 @@
 {% block titulo %}Solicitud ARCO+{% endblock %}
 {% block contenido %}
 <div class="encabezado">
-  <div><h1>{{ s.get_tipo_derecho_display }} — {{ s.estudiante }}</h1>
-    <p class="sub">Solicitada por {{ s.apoderado }} el {{ s.fecha_recepcion|date:"d-m-Y" }} · plazo {{ s.fecha_limite|date:"d-m-Y" }}
+  <div><h1>{{ s.get_tipo_derecho_display }} · {{ s.estudiante|priv:"nombre" }}</h1>
+    <p class="sub">Solicitud n.º {{ s.pk }} · titular {{ s.apoderado|priv:"nombre" }} · recibida el {{ s.fecha_recepcion|date:"d-m-Y" }}
+      · plazo {{ s.fecha_limite|date:"d-m-Y" }}
+      <span class="insignia {{ s.estado|color_estado }}">{{ s.get_estado_display }}</span>
       {% if s.vencida %}<span class="insignia rojo">vencida</span>{% endif %}</p></div>
-  <div class="acciones">{% if s.tipo_derecho == "acceso" or s.tipo_derecho == "portabilidad" %}
-    <a class="boton" href="{% url 'cumplimiento:arco_exportar' s.pk %}">Exportar expediente (JSON)</a>{% endif %}
-    {% if s.estudiante %}<a class="boton secundario" href="{% url 'estudiantes:detalle' s.estudiante_id %}">Ver ficha</a>{% endif %}</div>
+  <div class="acciones">
+    {% if s.estado == "recibida" %}<form class="enlinea" method="post" action="{% url 'cumplimiento:arco_analizar' s.pk %}">{% csrf_token %}
+      <button class="boton secundario" type="submit">Iniciar análisis</button></form>{% endif %}
+    {% if s.estado == "respondida" or s.estado == "rechazada" %}<a class="boton secundario" href="{% url 'cumplimiento:arco_carta' s.pk %}">Carta de respuesta</a>{% endif %}
+    <a class="boton secundario" href="{% url 'estudiantes:detalle' s.estudiante_id %}">Ver ficha</a>
+    <a class="boton secundario" href="{% url 'cumplimiento:arco' %}">Volver</a>
+  </div>
 </div>
-<div class="tarjeta formulario">
-  <h2>Respuesta</h2>
-  <form method="post">{% csrf_token %}{% include "comun/_campos.html" %}
-    <div class="pie-form"><button class="boton" type="submit">Guardar</button>
-      <a class="boton secundario" href="{% url 'cumplimiento:arco' %}">Volver</a></div></form>
-  <p class="ayuda">La exportación queda registrada en la bitácora. El contenido clínico solo se incluye si la exporta el equipo psicosocial.</p>
+
+<ol class="pasos-arco" aria-label="Avance de la solicitud">
+  <li class="hecho"><span>1</span>Recibida</li>
+  <li class="{% if s.estado != 'recibida' %}hecho{% else %}actual{% endif %}"><span>2</span>En análisis</li>
+  <li class="{% if acciones|length > 1 and s.estado != 'recibida' %}hecho{% elif s.estado == 'en_analisis' %}actual{% endif %}"><span>3</span>Derecho ejecutado</li>
+  <li class="{% if not abierta %}hecho{% endif %}"><span>4</span>Respondida</li>
+</ol>
+
+{% if bloqueo %}<div class="aviso warning"><strong>Tratamiento bloqueado</strong> desde el {{ bloqueo.fecha_inicio|date:"d-m-Y H:i" }}: el copiloto de IA y las nuevas evaluaciones del estudiante están suspendidos. Motivo: {{ bloqueo.motivo }}.</div>{% endif %}
+{% if supresion %}<div class="aviso info">Supresión propuesta a la Dirección ({{ supresion.get_accion_display|lower }}): <strong>{{ supresion.get_estado_display|lower }}</strong>.
+  {% if supresion.estado == "propuesta" %}La Directora la autoriza en <a href="{% url 'cumplimiento:retenciones' %}">Retención</a>.{% endif %}</div>{% endif %}
+
+<div class="rejilla-2 mitades">
+  <div>
+    <section class="tarjeta">
+      <h2>Solicitud</h2>
+      <dl class="datos">
+        <dt>Derecho</dt><dd>{{ s.get_tipo_derecho_display }}</dd>
+        <dt>Estudiante</dt><dd>{{ s.estudiante|priv:"nombre" }} · {{ s.estudiante.curso.nombre }}</dd>
+        <dt>Titular</dt><dd>{{ s.apoderado|priv:"nombre" }}</dd>
+        <dt>Responsable</dt><dd>{{ s.responsable.nombre_completo }}</dd>
+        <dt>Qué solicita</dt><dd>{{ s.detalle|default:"Sin detalle registrado."|linebreaksbr|priv:"texto" }}</dd>
+      </dl>
+    </section>
+
+    <section class="tarjeta derecho-panel" style="margin-top:12px" aria-labelledby="t-ejecutar">
+      <h2 id="t-ejecutar">Ejecutar el derecho</h2>
+      {% if s.tipo_derecho == "acceso" %}
+        <p class="ayuda">Entregue al titular todos los datos que trata la plataforma. El contenido clínico solo se incluye si lo genera el equipo psicosocial.</p>
+        <div class="acciones"><a class="boton" href="{% url 'cumplimiento:arco_acceso' s.pk %}">{% icono "ojo" 16 %} Informe de acceso (imprimible)</a>
+          <a class="boton secundario" href="{% url 'cumplimiento:arco_exportar' s.pk %}">{% icono "descargar" 16 %} Expediente en JSON</a></div>
+      {% elif s.tipo_derecho == "portabilidad" %}
+        <p class="ayuda">Entregue los datos en un formato estructurado, de uso común y lectura mecánica (JSON), para que el titular los lleve a otro establecimiento.</p>
+        <div class="acciones"><a class="boton" href="{% url 'cumplimiento:arco_exportar' s.pk %}">{% icono "descargar" 16 %} Descargar expediente (JSON)</a></div>
+      {% elif s.tipo_derecho == "rectificacion" %}
+        <p class="ayuda">Corrija los datos inexactos del estudiante o del contacto del titular. Se registra qué campos cambiaron, no sus valores.</p>
+        {% if abierta %}<div class="acciones"><a class="boton" href="{% url 'cumplimiento:arco_rectificar' s.pk %}">{% icono "editar" 16 %} Rectificar datos</a></div>{% endif %}
+      {% elif s.tipo_derecho == "supresion" %}
+        <p class="ayuda">Proponga a la Directora la anonimización o eliminación del expediente. Si existe una obligación legal de conservarlo, rechace la solicitud con ese fundamento.</p>
+        {% if abierta and not supresion %}<div class="acciones"><a class="boton peligro" href="{% url 'cumplimiento:arco_suprimir' s.pk %}">Proponer supresión</a></div>{% endif %}
+      {% elif s.tipo_derecho == "oposicion" %}
+        <p class="ayuda">Revoque los consentimientos de los tratamientos a los que se opone el titular (por ejemplo, el uso del copiloto de IA).</p>
+        {% if abierta %}<div class="acciones"><a class="boton" href="{% url 'cumplimiento:arco_oponerse' s.pk %}">Aplicar oposición</a></div>{% endif %}
+      {% elif s.tipo_derecho == "bloqueo" %}
+        <p class="ayuda">Suspenda temporalmente el tratamiento de los datos mientras se resuelve la situación. Los datos se conservan.</p>
+      {% endif %}
+      {% if puede.bloquear and abierta %}
+        {% if bloqueo %}
+        <form class="bloque-form" method="post" action="{% url 'cumplimiento:arco_desbloquear' s.pk %}" data-confirmar="¿Levantar el bloqueo? Se reanuda el tratamiento de los datos del estudiante.">{% csrf_token %}
+          <button class="boton secundario" type="submit">Levantar bloqueo</button></form>
+        {% else %}
+        <form class="bloque-form" method="post" action="{% url 'cumplimiento:arco_bloquear' s.pk %}">{% csrf_token %}
+          <div class="grupo"><label for="id_motivo">Bloqueo temporal del tratamiento</label>
+            <input class="campo" type="text" name="motivo" id="id_motivo" maxlength="255" required placeholder="Motivo, sin datos personales"></div>
+          <button class="boton secundario" type="submit">{% icono "candado" 16 %} Bloquear tratamiento</button></form>
+        {% endif %}
+      {% elif bloqueo %}
+        <form class="bloque-form" method="post" action="{% url 'cumplimiento:arco_desbloquear' s.pk %}" data-confirmar="¿Levantar el bloqueo? Se reanuda el tratamiento de los datos del estudiante.">{% csrf_token %}
+          <button class="boton secundario" type="submit">Levantar bloqueo</button></form>
+      {% endif %}
+    </section>
+
+    <section class="tarjeta formulario" style="margin-top:12px" aria-labelledby="t-respuesta">
+      <h2 id="t-respuesta">Respuesta al titular</h2>
+      <form method="post">{% csrf_token %}{% include "comun/_campos.html" %}
+        <div class="pie-form"><button class="boton" type="submit">Guardar respuesta</button></div></form>
+      <p class="ayuda">Al marcarla como respondida o rechazada se cierra la solicitud y queda disponible la carta para el titular.</p>
+    </section>
+  </div>
+
+  <section class="tarjeta" aria-labelledby="t-historial">
+    <h2 id="t-historial">Historial de la solicitud</h2>
+    <ul class="linea">
+      {% for a in acciones %}<li class="{% if a.tipo == 'respuesta' %}hito{% elif a.tipo == 'bloqueo' or a.tipo == 'supresion' %}derivacion{% else %}sesion{% endif %}">
+        <div class="cuando">{{ a.fecha_hora|date:"d-m-Y H:i" }} · {{ a.usuario.nombre_completo }}</div>
+        <div class="texto"><strong>{{ a.get_tipo_display }}</strong>{% if a.detalle %}<br><span class="ayuda" style="margin:0">{{ a.detalle }}</span>{% endif %}</div></li>
+      {% empty %}<p class="vacio">Sin acciones registradas.</p>{% endfor %}
+    </ul>
+  </section>
 </div>
 {% endblock %}

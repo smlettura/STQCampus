@@ -9,6 +9,8 @@ PyMySQL>=1.1              # conector MySQL en Python puro (funciona en Windows s
 openpyxl>=3.1             # importación y descargas en Excel (estudiantes, situación conductual, plan de gestión)
 reportlab>=4.0            # PDF de fichas y nóminas de curso
 gunicorn>=22 ; sys_platform != "win32"
+boto3>=1.34               # AWS: Secrets Manager y S3
+django-storages[s3]>=1.14 # AWS: adjuntos y bitácora en S3
 
 # Opcional: conector MySQL nativo, más rápido. Requiere compilador y las cabeceras de MySQL.
 # Si está instalado se usa automáticamente; si no, se usa PyMySQL.

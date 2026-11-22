@@ -13,7 +13,7 @@
         <span class="total">{% if g.terminal %}<span class="insignia">EGRESA</span>{% else %}pasa a {{ g.curso.nombre_nivel_siguiente|default:"—" }} {{ g.curso.letra }}{% endif %} · <strong>{{ g.estudiantes|length }}</strong> estudiantes</span></div>
       <table class="tabla v1"><thead><tr><th>Estudiante</th><th>RUT</th><th>Repite</th></tr></thead><tbody>
       {% for e in g.estudiantes %}<tr>
-        <td data-rotulo="Estudiante">{{ e.nombre_lista }}</td><td data-rotulo="RUT" class="nowrap">{{ e.rut|rut }}</td>
+        <td data-rotulo="Estudiante">{{ e.nombre_lista|priv:"nombre" }}</td><td data-rotulo="RUT" class="nowrap">{{ e.rut|rut|priv:"rut" }}</td>
         <td data-rotulo="Repite"><label class="grupo-casilla"><input type="checkbox" name="repite" value="{{ e.pk }}" {% if e.pk in marcados %}checked{% endif %} {% if proceso.procesado %}disabled{% endif %}> <span class="oculto-accesible">Repite</span></label></td>
       </tr>{% endfor %}
       </tbody></table>

@@ -29,7 +29,7 @@
         <div class="aviso advertencia">El procesamiento se habilita desde el {{ fecha_habilita|date:"d/m/Y" }}, al terminar el año escolar. Mientras tanto puede dejar la revisión lista.</div>
       {% else %}
         <p class="ayuda" style="margin-top:0">Esta acción mueve a los estudiantes a los cursos de {{ siguiente }} y registra a los egresados. No se puede deshacer.</p>
-        <form method="post" data-confirmar="¿Procesar el fin de año {{ proceso.anio }}? Esta acción no se puede deshacer.">{% csrf_token %}
+        <form method="post" data-confirmar="¿Procesar el fin de año {{ proceso.anio }}? Esta acción no se puede deshacer." data-peligro>{% csrf_token %}
           <button class="boton" type="submit">Procesar fin de año</button></form>
       {% endif %}
     </div>

@@ -21,9 +21,9 @@
   <h2>Últimas anotaciones</h2>
   <div class="tabla-scroll">
   <table class="tabla v1"><thead><tr><th>Fecha</th><th>Estudiante</th><th>Curso</th><th>Tipo</th><th>Descripción</th><th>Registró</th></tr></thead><tbody>
-  {% for a in recientes %}<tr><td class="nowrap" data-rotulo="Fecha">{{ a.fecha|date:"d/m/Y" }}</td><td data-rotulo="Estudiante">{{ a.estudiante.nombre_lista }}</td>
+  {% for a in recientes %}<tr><td class="nowrap" data-rotulo="Fecha">{{ a.fecha|date:"d/m/Y" }}</td><td data-rotulo="Estudiante">{{ a.estudiante.nombre_lista|priv:"nombre" }}</td>
     <td data-rotulo="Curso">{{ a.estudiante.curso.nombre }}</td><td data-rotulo="Tipo"><span class="insignia {{ a.tipo|color_estado }}">{{ a.get_tipo_display }}</span></td>
-    <td data-rotulo="Descripción">{{ a.descripcion|truncatechars:90 }}</td><td data-rotulo="Registró">{{ a.registrada_por }}</td></tr>
+    <td data-rotulo="Descripción">{{ a.descripcion|truncatechars:90|priv:"texto" }}</td><td data-rotulo="Registró">{{ a.registrada_por }}</td></tr>
   {% empty %}<tr><td colspan="6" class="vacio">Sin anotaciones en el periodo.</td></tr>{% endfor %}
   </tbody></table>
   </div>

@@ -4,7 +4,7 @@
 {% block contenido %}
 <div class="titulo-pagina">
   <div>
-    <h1>{% if estudiante_visible %}<a href="{% url 'estudiantes:detalle' caso.estudiante_id %}">{{ caso.estudiante }}</a>{% else %}{{ caso.estudiante }}{% endif %}</h1>
+    <h1>{% if estudiante_visible %}<a href="{% url 'estudiantes:detalle' caso.estudiante_id %}">{{ caso.estudiante|priv:"nombre" }}</a>{% else %}{{ caso.estudiante|priv:"nombre" }}{% endif %}</h1>
     <p class="sub">{{ caso.get_tipo_proceso_display }}{% if caso.tipo_atencion %} · {{ caso.tipo_atencion }}{% endif %} ·
       responsable {{ caso.responsable }} · abierto el {{ caso.fecha_apertura|date:"d-m-Y" }}
       <span class="insignia {{ caso.estado|color_estado }}">{{ caso.get_estado_display }}</span>
@@ -37,7 +37,7 @@
           {% if i.visible_pj %}<span class="insignia verde">visible para el profesor jefe</span>{% endif %}</div>
         {% if i.tipo == "documento" %}<div class="texto"><a href="{% url 'casos:descargar' i.id %}">{{ i.texto }}</a></div>
         {% elif i.tipo == "evaluacion" %}<div class="texto"><a href="{% url 'evaluacion:detalle' i.id %}">{{ i.texto }}</a></div>
-        {% else %}{% if i.detalle %}<div class="cuando">{{ i.detalle }}</div>{% endif %}<div class="texto">{{ i.texto }}</div>{% endif %}
+        {% else %}{% if i.detalle %}<div class="cuando">{{ i.detalle|priv:"texto" }}</div>{% endif %}<div class="texto">{{ i.texto|priv:"texto" }}</div>{% endif %}
       </li>
     {% empty %}<p class="vacio">Aún no hay registros en el caso.</p>{% endfor %}
     </ul>

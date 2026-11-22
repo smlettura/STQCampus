@@ -1,0 +1,21 @@
+# Linux (systemd). Copiar a /etc/systemd/system/ y ajustar User y rutas.
+#   sudo systemctl daemon-reload && sudo systemctl enable --now agente-stq
+#   journalctl -u agente-stq -f
+[Unit]
+Description=Agente del copiloto STQCampus (Ollama -> plataforma)
+After=network-online.target ollama.service
+Wants=network-online.target
+
+[Service]
+User=equipoia
+WorkingDirectory=/opt/agente-stq
+ExecStart=/usr/bin/python3 /opt/agente-stq/agente_stq.py
+Restart=always
+RestartSec=15
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

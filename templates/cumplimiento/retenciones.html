@@ -5,15 +5,16 @@
 <h1>Eliminación por retención (15 años)</h1>
 <p class="sub">La tarea mensual propone los expedientes con el plazo cumplido. Nada se elimina ni anonimiza sin la autorización de la Directora (RNF-10, reglamento interno).</p>
 <div class="tarjeta tabla-scroll"><table class="tabla">
-  <thead><tr><th>Expediente</th><th>Plazo cumplido</th><th>Acción</th><th>Estado</th><th>Autorización</th><th></th></tr></thead><tbody>
+  <thead><tr><th>Expediente</th><th>Origen</th><th>Plazo cumplido</th><th>Acción</th><th>Estado</th><th>Autorización</th><th></th></tr></thead><tbody>
   {% for r in retenciones %}<tr>
-    <td data-rotulo="Expediente">{{ r.estudiante|default:"(eliminado)" }}</td>
+    <td data-rotulo="Expediente">{{ r.estudiante|default:"(eliminado)"|priv:"nombre" }}</td>
+    <td data-rotulo="Origen">{% if r.origen == "arco" %}<span class="insignia derecho-supresion">Solicitud ARCO+{% if r.solicitud_arco_id %} n.º {{ r.solicitud_arco_id }}{% endif %}</span>{% else %}Plazo de 15 años{% endif %}</td>
     <td data-rotulo="Plazo">{{ r.fecha_vencimiento|date:"d-m-Y" }}</td>
     <td data-rotulo="Acción">{{ r.get_accion_display }}</td>
     <td data-rotulo="Estado"><span class="insignia {{ r.estado|color_estado }}">{{ r.get_estado_display }}</span></td>
     <td data-rotulo="Autorización">{% if r.autorizada_por %}{{ r.autorizada_por }} · {{ r.fecha_autorizacion|date:"d-m-Y" }}{% else %}—{% endif %}
       {% if r.fecha_ejecucion %}<br><small class="ayuda">ejecutada {{ r.fecha_ejecucion|date:"d-m-Y" }}</small>{% endif %}</td>
     <td>{% if "retencion.autorizar" in permisos and r.estado in "propuesta postergada" %}<a class="boton chico" href="{% url 'cumplimiento:retencion_decidir' r.pk %}">Decidir</a>{% endif %}</td></tr>
-  {% empty %}<tr><td colspan="6" class="vacio">No hay propuestas.</td></tr>{% endfor %}
+  {% empty %}<tr><td colspan="7" class="vacio">No hay propuestas.</td></tr>{% endfor %}
 </tbody></table></div>
 {% endblock %}

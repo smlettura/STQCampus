@@ -18,10 +18,68 @@ document.addEventListener("DOMContentLoaded", function () {
     document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { cerrar(); } });
   }
 
-  // Formularios que piden confirmación antes de enviarse (acciones irreversibles).
+  // Avisos flotantes: los de éxito e información se cierran solos (pausa al pasar el mouse); los errores quedan.
+  var cerrarAviso = function (t) {
+    if (!t || t.classList.contains("saliendo")) { return; }
+    t.classList.add("saliendo");
+    setTimeout(function () {
+      var cont = t.parentNode; t.remove();
+      if (cont && !cont.children.length) { cont.remove(); }
+    }, 230);
+  };
+  document.querySelectorAll(".toast").forEach(function (t, i) {
+    t.querySelector(".toast-cerrar").addEventListener("click", function () { cerrarAviso(t); });
+    if (t.classList.contains("error") || t.classList.contains("warning")) { return; }
+    var restante = 6000 + i * 800, inicio, temporizador;
+    t.style.setProperty("--duracion", restante + "ms");
+    t.classList.add("con-tiempo");
+    var correr = function () { inicio = Date.now(); temporizador = setTimeout(function () { cerrarAviso(t); }, restante); };
+    t.addEventListener("mouseenter", function () { clearTimeout(temporizador); restante -= Date.now() - inicio; });
+    t.addEventListener("mouseleave", correr);
+    correr();
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") { document.querySelectorAll(".toast").forEach(cerrarAviso); }
+  });
+
+  // Confirmación de acciones irreversibles con un diálogo propio (sin el cuadro del navegador).
+  var dialogo = null;
+  var confirmar = function (mensaje, peligro, alAceptar) {
+    if (!window.HTMLDialogElement) { if (window.confirm(mensaje)) { alAceptar(); } return; }
+    if (!dialogo) {
+      dialogo = document.createElement("dialog");
+      dialogo.className = "confirmacion";
+      dialogo.setAttribute("aria-labelledby", "confirmacion-titulo");
+      dialogo.innerHTML = '<div class="confirmacion-cuerpo"><span class="confirmacion-icono" aria-hidden="true">' +
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>' +
+        '<div><h2 id="confirmacion-titulo">¿Confirmar esta acción?</h2><p class="confirmacion-mensaje"></p></div></div>' +
+        '<div class="confirmacion-pie"><button type="button" class="boton secundario" data-respuesta="no">Cancelar</button>' +
+        '<button type="button" class="boton" data-respuesta="si">Confirmar</button></div>';
+      document.body.appendChild(dialogo);
+      dialogo.addEventListener("click", function (ev) { if (ev.target === dialogo) { dialogo.close("no"); } });
+      dialogo.querySelectorAll("[data-respuesta]").forEach(function (b) {
+        b.addEventListener("click", function () { dialogo.close(b.getAttribute("data-respuesta")); });
+      });
+    }
+    dialogo.querySelector(".confirmacion-mensaje").textContent = mensaje;
+    dialogo.classList.toggle("peligro", !!peligro);
+    var aceptar = dialogo.querySelector('[data-respuesta="si"]');
+    aceptar.className = "boton" + (peligro ? " peligro" : "");
+    dialogo.onclose = function () { if (dialogo.returnValue === "si") { alAceptar(); } };
+    dialogo.returnValue = "";
+    dialogo.showModal();
+    dialogo.querySelector('[data-respuesta="no"]').focus();
+  };
   document.querySelectorAll("form[data-confirmar]").forEach(function (form) {
     form.addEventListener("submit", function (ev) {
-      if (!window.confirm(form.getAttribute("data-confirmar"))) { ev.preventDefault(); }
+      if (form.dataset.confirmado === "1") { form.dataset.confirmado = ""; return; }
+      ev.preventDefault();
+      var boton = ev.submitter;
+      confirmar(form.getAttribute("data-confirmar"), form.hasAttribute("data-peligro"), function () {
+        form.dataset.confirmado = "1";
+        if (form.requestSubmit) { form.requestSubmit(boton || undefined); } else { form.submit(); }
+      });
     });
   });
 
@@ -144,6 +202,95 @@ document.addEventListener("DOMContentLoaded", function () {
       botones.forEach(function (b) {
         setTimeout(function () { b.disabled = true; }, 0);
       });
+    });
+  });
+});
+
+// Buscadores con lista desplegable: los campos con data-sugerencias="<url>" piden coincidencias a medida que se
+// escribe (desde 2 letras) y muestran una lista navegable con el teclado. Al elegir, se va a la ficha del resultado
+// o, si el campo tiene data-destino="?estudiante={id}", a esa dirección. Enter sin elegir envía el formulario normal.
+document.addEventListener("DOMContentLoaded", function () {
+  var contador = 0;
+  document.querySelectorAll("input[data-sugerencias]").forEach(function (campo) {
+    var id = "sugerencias-" + (++contador);
+    var lista = document.createElement("ul");
+    lista.className = "sugerencias";
+    lista.id = id;
+    lista.setAttribute("role", "listbox");
+    lista.hidden = true;
+    var contenedor = campo.closest("form, label, .filtro-texto") || campo.parentNode;
+    if (getComputedStyle(contenedor).position === "static") { contenedor.style.position = "relative"; }
+    contenedor.appendChild(lista);
+    campo.setAttribute("role", "combobox");
+    campo.setAttribute("aria-autocomplete", "list");
+    campo.setAttribute("aria-controls", id);
+    campo.setAttribute("aria-expanded", "false");
+
+    var items = [], activo = -1, temporizador = null, ultima = "", pedido = 0;
+
+    function cerrar() {
+      lista.hidden = true; activo = -1;
+      campo.setAttribute("aria-expanded", "false");
+      campo.removeAttribute("aria-activedescendant");
+    }
+    function destino(r) {
+      var plantilla = campo.getAttribute("data-destino");
+      return plantilla ? plantilla.replace("{id}", encodeURIComponent(r.id)) : r.url;
+    }
+    function marcar(i) {
+      var opciones = lista.querySelectorAll("li[role=option]");
+      opciones.forEach(function (li, k) { li.setAttribute("aria-selected", k === i ? "true" : "false"); });
+      activo = i;
+      if (i >= 0 && opciones[i]) {
+        campo.setAttribute("aria-activedescendant", opciones[i].id);
+        opciones[i].scrollIntoView({ block: "nearest" });
+      }
+    }
+    function pintar(resultados, texto) {
+      items = resultados;
+      lista.innerHTML = "";
+      if (!resultados.length) {
+        var vacio = document.createElement("li");
+        vacio.className = "sugerencias-vacio";
+        vacio.textContent = "Sin coincidencias para «" + texto + "»";
+        lista.appendChild(vacio);
+      }
+      resultados.forEach(function (r, k) {
+        var li = document.createElement("li");
+        li.id = id + "-" + k;
+        li.setAttribute("role", "option");
+        var t = document.createElement("strong"); t.textContent = r.texto;
+        var d = document.createElement("small"); d.textContent = r.detalle || "";
+        li.appendChild(t); li.appendChild(d);
+        li.addEventListener("mousedown", function (ev) { ev.preventDefault(); window.location.href = destino(r); });
+        li.addEventListener("mousemove", function () { marcar(k); });
+        lista.appendChild(li);
+      });
+      lista.hidden = false; activo = -1;
+      campo.setAttribute("aria-expanded", "true");
+    }
+    function buscar() {
+      var texto = campo.value.trim();
+      if (texto.length < 2) { cerrar(); ultima = texto; return; }
+      if (texto === ultima && !lista.hidden) { return; }
+      ultima = texto;
+      var url = new URL(campo.getAttribute("data-sugerencias"), window.location.href);
+      url.searchParams.set("q", texto);
+      var numero = ++pedido;
+      fetch(url.toString(), { headers: { "Accept": "application/json" }, credentials: "same-origin" })
+        .then(function (r) { return r.ok ? r.json() : { resultados: [] }; })
+        .then(function (datos) { if (numero === pedido && campo.value.trim() === texto) { pintar(datos.resultados || [], texto); } })
+        .catch(function () { cerrar(); });
+    }
+    campo.addEventListener("input", function () { clearTimeout(temporizador); temporizador = setTimeout(buscar, 180); });
+    campo.addEventListener("focus", function () { if (campo.value.trim().length >= 2) { ultima = ""; buscar(); } });
+    campo.addEventListener("blur", function () { setTimeout(cerrar, 120); });
+    campo.addEventListener("keydown", function (ev) {
+      if (lista.hidden || !items.length) { if (ev.key === "Escape") { cerrar(); } return; }
+      if (ev.key === "ArrowDown") { ev.preventDefault(); marcar(Math.min(activo + 1, items.length - 1)); }
+      else if (ev.key === "ArrowUp") { ev.preventDefault(); marcar(Math.max(activo - 1, 0)); }
+      else if (ev.key === "Enter" && activo >= 0) { ev.preventDefault(); window.location.href = destino(items[activo]); }
+      else if (ev.key === "Escape") { cerrar(); }
     });
   });
 });

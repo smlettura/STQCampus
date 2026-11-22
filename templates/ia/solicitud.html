@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Borrador del copiloto{% endblock %}
+{% block cabeza_extra %}{% if en_espera %}<meta http-equiv="refresh" content="15">{% endif %}{% endblock %}
+{% block contenido %}
+<div class="titulo-pagina"><h1>Borrador del copiloto</h1>
+  <span class="contexto">{{ estudiante.nombres|priv:"nombre" }} {{ estudiante.apellidos|priv:"nombre" }} · {{ sol.fecha_creacion|date:"d/m/Y H:i" }} ·
+    <span class="insignia {% if sol.estado == 'lista' %}verde{% elif sol.estado in 'error expirada' %}rojo{% else %}ambar{% endif %}">{{ sol.get_estado_display|upper }}</span></span></div>
+
+{% if sol.estado == "pendiente" or sol.estado == "en_proceso" %}
+<section class="tarjeta" role="status">
+  <h2>{% if sol.estado == "pendiente" %}En cola{% else %}El copiloto está redactando{% endif %}</h2>
+  <p>{% if sol.estado == "pendiente" %}{% if conectado %}La solicitud está en la posición {{ posicion }} de la cola.{% else %}El equipo de IA no está conectado: la solicitud se procesará cuando se conecte (plazo máximo 24 horas). Puede seguir trabajando o redactar el informe de forma manual.{% endif %}{% else %}El borrador suele tardar unos minutos.{% endif %}
+  Esta página se actualiza sola.</p>
+</section>
+{% elif sol.estado == "error" or sol.estado == "expirada" %}
+<section class="tarjeta"><h2>No se pudo generar el borrador</h2>
+  <p>{% if sol.estado == "expirada" %}Nadie atendió la solicitud en 24 horas y su texto se borró.{% else %}El equipo de IA no respondió después de 3 intentos.{% endif %}
+  Redacte el informe de forma manual o vuelva a intentarlo desde <a href="{% url 'ia:generar_informe' %}?estudiante={{ estudiante.pk }}">Generar informe</a>.</p></section>
+{% elif contenido %}
+<div class="nota-info" style="margin-bottom:14px">{% icono "info" 18 %}
+  <p><strong>Generado con IA ({{ contenido.modelo }}).</strong> Revise y corrija el texto: nada pasa a la ficha sin su validación. Los datos que se eliminaron por privacidad (por ejemplo, [RUT]) no se restituyen.</p></div>
+{% if alertas %}<section class="tarjeta" style="margin-bottom:12px" aria-labelledby="t-avisos"><h2 id="t-avisos">Revise antes de validar</h2>
+  <ul>{% for a in alertas %}<li>{{ a }}</li>{% endfor %}</ul></section>{% endif %}
+{% if contenido.estado == "generado" %}
+<form method="post" action="{% url 'ia:validar' contenido.pk %}" class="tarjeta">{% csrf_token %}
+  <label for="id_texto"><strong>Borrador (editable)</strong></label>
+  <p class="ayuda">Formato: «### Título» para secciones, «* » para viñetas y **texto** para negrita. Al validar, el informe se muestra con el formato de documento.</p>
+  <textarea class="campo" id="id_texto" name="texto" rows="22" style="width:100%;font-family:inherit">{{ contenido.texto_generado }}</textarea>
+  <div class="campos dos" style="margin-top:10px">
+    <div class="grupo"><label for="id_tipo_ficha">Guardar en la ficha como</label>
+      <select class="campo" id="id_tipo_ficha" name="tipo_ficha">{% for c, t in tipos_ficha %}<option value="{{ c }}"{% if c == tipo_sugerido %} selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+  </div>
+  <div class="acciones" style="margin-top:12px"><button class="boton" type="submit">Validar y guardar como informe en borrador</button></div>
+</form>
+<form method="post" action="{% url 'ia:descartar' contenido.pk %}" style="margin-top:8px">{% csrf_token %}<button class="boton secundario" type="submit">Descartar borrador</button></form>
+{% else %}
+<section class="tarjeta"><h2>{{ contenido.get_estado_display }}</h2>
+  {% if contenido.estado == "bloqueado" %}<p>{{ contenido.texto_generado }}</p>{% endif %}
+  {% if contenido.estado == "validado" %}<p>Validado por {{ contenido.validador.nombre_completo }} el {{ contenido.fecha_validacion|date:"d/m/Y H:i" }}.{% if contenido.informe %} <a href="{% url 'evaluacion:informe' contenido.informe.pk %}">Ver el informe</a>.{% endif %}</p>{% endif %}</section>
+{% endif %}
+<form method="post" action="{% url 'ia:retroalimentar' contenido.pk %}" class="tarjeta" style="margin-top:12px">{% csrf_token %}
+  <h2>¿La salida es incorrecta o problemática?</h2>
+  <div class="campos dos"><div class="grupo"><label for="id_motivo">Motivo</label>
+    <select class="campo" id="id_motivo" name="motivo">{% for c, t in motivos %}<option value="{{ c }}">{{ t }}</option>{% endfor %}</select></div></div>
+  <div class="grupo"><label for="id_comentario">Comentario</label><textarea class="campo" id="id_comentario" name="comentario" rows="3"></textarea></div>
+  <div class="acciones"><button class="boton secundario" type="submit">Enviar observación</button></div>
+</form>
+{% else %}
+<section class="tarjeta"><p>La solicitud está cerrada.</p></section>
+{% endif %}
+<p style="margin-top:14px"><a href="{% url 'ia:generar_informe' %}?estudiante={{ estudiante.pk }}">← Volver a Generar informe</a></p>
+{% endblock %}

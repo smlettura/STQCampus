@@ -12,6 +12,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from apps.core.privacidad import datos_visibles
+from apps.core.privacidad import mostrar as _mostrar
 from apps.auditoria.servicios import registrar
 from apps.casos.acceso import casos_visibles
 from apps.casos.models import Hito
@@ -169,6 +171,8 @@ def detalle(request, pk):
         ctx["hitos_visibles"] = Hito.objects.filter(caso__estudiante=e, visible_profesor_jefe=True).order_by("-fecha")[:20]
     if u.tiene_permiso("consentimiento.gestionar"):
         ctx["consentimientos"] = e.consentimientos.select_related("apoderado")
+    from apps.cumplimiento.models import BloqueoTratamiento
+    ctx["bloqueo"] = BloqueoTratamiento.objects.filter(estudiante=e, fecha_termino__isnull=True).select_related("solicitud").first()
     if u.tiene_permiso("convivencia.ver", "anotacion.registrar"):
         ctx["anotaciones"] = e.anotaciones.select_related("registrada_por")[:10]
         ctx["resumen_anotaciones"] = dict(e.anotaciones.values_list("tipo").annotate(n=Count("id")))
@@ -177,7 +181,9 @@ def detalle(request, pk):
     return render(request, "estudiantes/detalle.html", ctx)
 
 
+
 @permiso_requerido("estudiante.ver_todos", "estudiante.ver_curso")
+@datos_visibles
 def ficha_pdf(request, pk):
     e = _estudiante_visible(request, pk)
     registrar(request.user, "exportacion", "estudiante", e.pk, detalle="ficha PDF")
@@ -208,6 +214,7 @@ def crear(request):
 
 
 @permiso_requerido("estudiante.gestionar")
+@datos_visibles
 def editar(request, pk):
     return _formulario_estudiante(request, _estudiante_visible(request, pk))
 
@@ -227,7 +234,7 @@ def marcar_inactivo(request, pk):
         messages.success(request, "%s quedó como inactivo (retirado)." % e)
         return redirect("estudiantes:detalle", e.pk)
     return render(request, "comun/formulario.html", {
-        "form": form, "titulo": "Marcar como inactivo — %s" % e, "boton": "Marcar como inactivo",
+        "form": form, "titulo": "Marcar como inactivo — %s" % pv(e), "boton": "Marcar como inactivo",
         "volver_url": reverse("estudiantes:detalle", args=[e.pk]),
         "advertencia": "El estudiante dejará de aparecer entre los activos y no podrá recibir nuevas atenciones, "
                        "anotaciones ni registros."})
@@ -255,7 +262,7 @@ def vincular_apoderado(request, pk):
         messages.success(request, "Apoderado vinculado.")
         return redirect("estudiantes:detalle", e.pk)
     return render(request, "comun/formulario.html", {
-        "form": form, "titulo": "Vincular apoderado a %s" % e, "volver_url": reverse("estudiantes:detalle", args=[e.pk]),
+        "form": form, "titulo": "Vincular apoderado a %s" % pv(e), "volver_url": reverse("estudiantes:detalle", args=[e.pk]),
         "ayuda": "Si el RUT ya está registrado se usará ese apoderado; si no, se creará con los datos ingresados."})
 
 
@@ -274,6 +281,7 @@ def desvincular_apoderado(request, pk):
 
 
 @permiso_requerido("estudiante.gestionar")
+@datos_visibles
 def editar_apoderado(request, pk):
     apoderado = get_object_or_404(Apoderado, pk=pk)
     vinculo = apoderado.vinculos_estudiante.first()
@@ -285,7 +293,7 @@ def editar_apoderado(request, pk):
         registrar(request.user, "modificacion", "apoderado", apoderado.pk)
         messages.success(request, "Datos del apoderado actualizados.")
         return redirect("estudiantes:detalle", vinculo.estudiante_id) if vinculo else redirect("estudiantes:lista")
-    return render(request, "comun/formulario.html", {"form": form, "titulo": "Datos de %s" % apoderado,
+    return render(request, "comun/formulario.html", {"form": form, "titulo": "Datos de %s" % pv(apoderado),
                                                      "volver_url": reverse("estudiantes:lista")})
 
 
@@ -450,3 +458,32 @@ def egresados(request):
         "total": todos.count(), "ultimo": ultimo, "anio_actual": hoy.year,
         "terminales_actuales": list(actual.cursos_terminales.ordenados()) if actual else [],
         "ultimo_anio_egreso": todos.aggregate(m=Max("fecha_egreso"))["m"]})
+
+
+# ---------------------------------------------------------------------------------------------- sugerencias
+MAX_SUGERENCIAS = 8
+
+
+@permiso_requerido("estudiante.ver_todos", "estudiante.ver_curso")
+def sugerencias(request):
+    """Lista desplegable de los buscadores: estudiantes visibles para el usuario que coinciden con lo escrito
+    (nombre, apellido o RUT). Solo devuelve lo que el usuario ya puede ver en la lista de estudiantes."""
+    from django.http import JsonResponse
+    from apps.core.privacidad import mostrar
+    from apps.core.templatetags.ui import rut as formato_rut
+    q = " ".join(request.GET.get("q", "").split())[:60]
+    if len(q) < 2:
+        return JsonResponse({"resultados": []})
+    qs = estudiantes_visibles(request.user)
+    if request.GET.get("activos") == "1":
+        qs = qs.activos()
+    qs = qs.buscar(q).select_related("curso").order_by("apellido_paterno", "apellido_materno", "primer_nombre")
+    return JsonResponse({"resultados": [
+        {"id": e.pk, "texto": mostrar("%s %s" % (e.nombres, e.apellidos), "nombre", request),
+         "detalle": "%s · %s" % (mostrar(formato_rut(e.rut), "rut", request), e.curso.nombre),
+         "url": reverse("estudiantes:detalle", args=[e.pk])} for e in qs[:MAX_SUGERENCIAS]]})
+
+
+def pv(objeto):
+    """Nombre para títulos y mensajes: iniciales si la sesión está en modo privado."""
+    return _mostrar(str(objeto), "nombre")

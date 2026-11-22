@@ -22,6 +22,13 @@ def _f(valor):
 def exportar_expediente(estudiante, usuario, incluir_clinico):
     """Expediente completo en JSON (formato estructurado y reutilizable). El contenido clínico solo se incluye si
     quien exporta pertenece al equipo psicosocial."""
+    datos = datos_expediente(estudiante, incluir_clinico)
+    registrar(usuario, "exportacion", "estudiante", estudiante.pk, detalle="expediente %s" % ("completo" if incluir_clinico else "administrativo"))
+    return json.dumps(datos, ensure_ascii=False, indent=2)
+
+
+def datos_expediente(estudiante, incluir_clinico):
+    """Todos los datos personales del estudiante que trata la plataforma (derecho de acceso y portabilidad)."""
     datos = {
         "generado": timezone.now().isoformat(), "plataforma": settings.NOMBRE_PLATAFORMA,
         "estudiante": {"rut": estudiante.rut, "primer_nombre": estudiante.primer_nombre,
@@ -67,8 +74,7 @@ def exportar_expediente(estudiante, usuario, incluir_clinico):
         datos["casos"].append(c)
     if not incluir_clinico:
         datos["nota"] = "El contenido clínico (notas y diagnósticos) lo entrega el equipo psicosocial."
-    registrar(usuario, "exportacion", "estudiante", estudiante.pk, detalle="expediente %s" % ("completo" if incluir_clinico else "administrativo"))
-    return json.dumps(datos, ensure_ascii=False, indent=2)
+    return datos
 
 
 def fecha_vencimiento(estudiante):

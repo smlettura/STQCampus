@@ -3,6 +3,24 @@
 # aplicación (sin UPDATE/DELETE sobre la bitácora), inicializa roles y reglas, y levanta gunicorn.
 set -e
 
+# En AWS la configuración vive en Secrets Manager. settings.py la lee por su cuenta, pero este script también necesita
+# DB_HOST, DB_MIGRA_USER, etc. antes de llamar a Django: se exportan aquí (sin sobrescribir variables ya definidas).
+if [ -n "$AWS_SECRETS_ID" ]; then
+  SECRETOS="$(python - <<'PY'
+import json, os, shlex
+import boto3
+region = os.environ.get("AWS_REGION") or "us-east-1"
+valores = json.loads(boto3.client("secretsmanager", region_name=region)
+                     .get_secret_value(SecretId=os.environ["AWS_SECRETS_ID"])["SecretString"])
+for clave, valor in valores.items():
+    if clave.isidentifier() and clave not in os.environ:
+        print("export %s=%s" % (clave, shlex.quote(str(valor))))
+PY
+)"
+  eval "$SECRETOS"
+  unset SECRETOS
+fi
+
 if [ "$DB_ENGINE" = "mysql" ]; then
   echo "Esperando a MySQL en $DB_HOST:${DB_PORT:-3306}..."
   python - <<'PY'
@@ -10,9 +28,11 @@ import os, sys, time
 import pymysql
 for intento in range(60):
     try:
+        # Con DB_SSL_CA (Amazon RDS) la espera también usa TLS: RDS puede exigir conexiones cifradas.
+        tls = {"ssl": {"ca": os.environ["DB_SSL_CA"]}} if os.environ.get("DB_SSL_CA") else {}
         pymysql.connect(host=os.environ["DB_HOST"], port=int(os.environ.get("DB_PORT", "3306")),
                         user=os.environ["DB_MIGRA_USER"], password=os.environ["DB_MIGRA_PASSWORD"],
-                        database=os.environ.get("DB_NAME", "bienestar")).close()
+                        database=os.environ.get("DB_NAME", "bienestar"), **tls).close()
         sys.exit(0)
     except Exception:
         time.sleep(2)
@@ -20,6 +40,8 @@ sys.exit("MySQL no respondió a tiempo.")
 PY
   echo "Migrando con el usuario propietario del esquema..."
   DB_USER="$DB_MIGRA_USER" DB_PASSWORD="$DB_MIGRA_PASSWORD" python manage.py migrate --noinput
+  # Se conecta como propietario del esquema y otorga los permisos al usuario de la aplicación ($DB_USER original).
+  # shellcheck disable=SC2097,SC2098
   DB_USER="$DB_MIGRA_USER" DB_PASSWORD="$DB_MIGRA_PASSWORD" python manage.py permisos_bd --aplicar --usuario "$DB_USER"
 else
   python manage.py migrate --noinput
@@ -33,5 +55,9 @@ fi
 
 python manage.py collectstatic --noinput
 
+# t4g.small (2 vCPU, 2 GiB): 3 trabajadores (medidos en local en unos 77 MB cada uno en reposo). Se reciclan cada
+# 1000 solicitudes para acotar el crecimiento de memoria. --forwarded-allow-ips="*" es seguro porque el puerto 8000
+# no se publica: solo lo alcanza el proxy nginx por la red interna de Docker.
 exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers "${GUNICORN_WORKERS:-3}" \
+  --max-requests 1000 --max-requests-jitter 100 --worker-tmp-dir /dev/shm --timeout 60 \
   --access-logfile - --forwarded-allow-ips="*"

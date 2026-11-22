@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% load ui %}
-{% block titulo %}{{ e }}{% endblock %}
+{% block titulo %}{{ e|priv }}{% endblock %}
 {% block contenido %}
+{% if bloqueo %}<div class="aviso warning"><strong>Tratamiento bloqueado</strong> por una solicitud ARCO+{% if bloqueo.solicitud_id and "arco.gestionar" in permisos %} (<a href="{% url 'cumplimiento:arco_detalle' bloqueo.solicitud_id %}">n.º {{ bloqueo.solicitud_id }}</a>){% endif %}: el copiloto de IA y las nuevas evaluaciones están suspendidos. Los datos se conservan.</div>{% endif %}
 <div class="titulo-pagina">
-  <div><h1>{{ e.nombres }} {{ e.apellidos }}</h1>
-    <p class="sub">{{ e.curso.nombre }} {{ e.curso.anio_escolar }} · RUT <span class="nowrap">{{ e.rut|rut }}</span> · {{ e.edad }} años
+  <div><h1>{{ e.nombres|priv:"nombre" }} {{ e.apellidos|priv:"nombre" }}</h1>
+    <p class="sub">{{ e.curso.nombre }} {{ e.curso.anio_escolar }} · RUT <span class="nowrap">{{ e.rut|rut|priv:"rut" }}</span> · {{ e.edad }} años
       {% for p in programas %}<span class="insignia{% if p == 'PRIORITARIO' %} ambar{% endif %}">{{ p }}</span> {% endfor %}
       {% if e.matricula_condicional %}<span class="insignia ambar">matrícula condicional</span>{% endif %}
       <span class="estado {{ e.estado|color_estado }}">{{ e.get_estado_display }}</span></p></div>
@@ -30,15 +31,15 @@
   </div>
 </div>
 
-<div class="rejilla">
+<div class="rejilla iguales">
   <div class="tarjeta">
     <h2>Información personal</h2>
     <dl class="datos">
-      <dt>Primer nombre</dt><dd>{{ e.primer_nombre }}</dd>
-      <dt>Segundo nombre</dt><dd>{{ e.segundo_nombre|default:"—" }}</dd>
-      <dt>Apellidos</dt><dd>{{ e.apellido_paterno }} {{ e.apellido_materno }}</dd>
-      <dt>Nombre social</dt><dd>{{ e.nombre_social|default:"—" }}</dd>
-      <dt>Fecha de nacimiento</dt><dd>{{ e.fecha_nacimiento|date:"d/m/Y" }}</dd>
+      <dt>Primer nombre</dt><dd>{{ e.primer_nombre|priv:"nombre" }}</dd>
+      <dt>Segundo nombre</dt><dd>{{ e.segundo_nombre|default:"—"|priv:"nombre" }}</dd>
+      <dt>Apellidos</dt><dd>{{ e.apellido_paterno|priv:"nombre" }} {{ e.apellido_materno|priv:"nombre" }}</dd>
+      <dt>Nombre social</dt><dd>{{ e.nombre_social|default:"—"|priv:"nombre" }}</dd>
+      <dt>Fecha de nacimiento</dt><dd>{{ e.fecha_nacimiento|date:"d/m/Y"|priv:"fecha" }}</dd>
     </dl>
   </div>
   <div class="tarjeta">
@@ -56,12 +57,12 @@
     <h2>Apoderados</h2>
     {% for v in vinculos %}
       <div class="vinculo">
-        <strong>{{ v.apoderado }}</strong> {% if v.es_titular %}<span class="insignia verde">titular</span>{% endif %}<br>
-        <small class="ayuda">{{ v.get_parentesco_display }} · {{ v.apoderado.telefono|default:"sin teléfono" }} · {{ v.apoderado.correo|default:"sin correo" }}{% if v.apoderado.rut %} · RUT {{ v.apoderado.rut|rut }}{% endif %}</small>
+        <strong>{{ v.apoderado|priv:"nombre" }}</strong> {% if v.es_titular %}<span class="insignia verde">titular</span>{% endif %}<br>
+        <small class="ayuda">{{ v.get_parentesco_display }} · {{ v.apoderado.telefono|default:"sin teléfono"|priv:"contacto" }} · {{ v.apoderado.correo|default:"sin correo"|priv:"contacto" }}{% if v.apoderado.rut %} · RUT {{ v.apoderado.rut|rut|priv:"rut" }}{% endif %}</small>
         {% if "estudiante.gestionar" in permisos %}
         <div class="acciones chicas">
           <a href="{% url 'estudiantes:editar_apoderado' v.apoderado.pk %}">Editar datos</a>
-          <form class="enlinea" method="post" action="{% url 'estudiantes:desvincular_apoderado' v.pk %}" data-confirmar="¿Desvincular a este apoderado?">{% csrf_token %}<button class="enlace" type="submit">Desvincular</button></form>
+          <form class="enlinea" method="post" action="{% url 'estudiantes:desvincular_apoderado' v.pk %}" data-confirmar="¿Desvincular a este apoderado?" data-peligro>{% csrf_token %}<button class="enlace" type="submit">Desvincular</button></form>
         </div>{% endif %}
       </div>
     {% empty %}<p class="vacio">Sin apoderados vinculados.</p>{% endfor %}
@@ -80,8 +81,8 @@
 </div>
 {% endif %}
 
+<div class="rejilla iguales">
 {% if anotaciones is not None %}
-<div class="rejilla">
   <div class="tarjeta">
     <div class="cabecera-tarjeta"><h2>Anotaciones</h2>
       {% if "anotacion.registrar" in permisos and e.activo %}<a class="boton secundario chico" href="{% url 'convivencia:anotacion_nueva' %}?estudiante={{ e.pk }}">Registrar anotación</a>{% endif %}</div>
@@ -92,7 +93,7 @@
       <span class="insignia rojo">Gravísimas {{ resumen_anotaciones|clave:"gravisima"|default:0 }}</span>
     </div>
     <ul class="linea">
-    {% for a in anotaciones %}<li class="hito"><div class="cuando">{{ a.fecha|date:"d/m/Y" }} · <strong>{{ a.get_tipo_display }}</strong> · {{ a.registrada_por }}</div><div class="texto">{{ a.descripcion }}</div></li>
+    {% for a in anotaciones %}<li class="hito"><div class="cuando">{{ a.fecha|date:"d/m/Y" }} · <strong>{{ a.get_tipo_display }}</strong> · {{ a.registrada_por }}</div><div class="texto">{{ a.descripcion|priv:"texto" }}</div></li>
     {% empty %}<p class="vacio">Sin anotaciones.</p>{% endfor %}
     </ul>
   </div>
@@ -101,22 +102,23 @@
     <div class="cabecera-tarjeta"><h2>Situación conductual</h2>
       {% if "convivencia.gestionar" in permisos and e.activo %}<a class="boton secundario chico" href="{% url 'convivencia:registro_nuevo' %}?estudiante={{ e.pk }}">Nuevo registro</a>{% endif %}</div>
     <ul class="linea">
-    {% for r in registros %}<li class="documento"><div class="cuando">{{ r.fecha|date:"d/m/Y" }} · <strong>{{ r.get_categoria_display }}</strong>{% if r.porcentaje_asistencia is not None %} · asistencia {{ r.porcentaje_asistencia|pct }}{% endif %}</div><div class="texto">{{ r.descripcion }}</div></li>
+    {% for r in registros %}<li class="documento"><div class="cuando">{{ r.fecha|date:"d/m/Y" }} · <strong>{{ r.get_categoria_display }}</strong>{% if r.porcentaje_asistencia is not None %} · asistencia {{ r.porcentaje_asistencia|pct }}{% endif %}</div><div class="texto">{{ r.descripcion|priv:"texto" }}</div></li>
     {% empty %}<p class="vacio">Sin registros.</p>{% endfor %}
     </ul>
   </div>
   {% endif %}
-</div>
 {% endif %}
+</div>
 
+<div class="rejilla iguales">
 {% if planes is not None %}
 <div class="tarjeta">
   <h2>Planes de apoyo</h2>
   {% for p in planes %}
     <div class="grupo"><strong>{{ p.get_tipo_display }}</strong> <span class="insignia {{ p.estado|color_estado }}">{{ p.get_estado_display }}</span>
       <small class="ayuda">desde {{ p.fecha_inicio|date:"d-m-Y" }}{% if p.fecha_termino %} hasta {{ p.fecha_termino|date:"d-m-Y" }}{% endif %}</small>
-      <p><em>Adecuaciones para el aula:</em> {{ p.adecuaciones|linebreaksbr }}</p>
-      {% if ve_detalle_plan and p.detalle %}<p><em>Detalle:</em> {{ p.detalle|linebreaksbr }}</p>{% endif %}
+      <p><em>Adecuaciones para el aula:</em> {{ p.adecuaciones|linebreaksbr|priv:"texto" }}</p>
+      {% if ve_detalle_plan and p.detalle %}<p><em>Detalle:</em> {{ p.detalle|linebreaksbr|priv:"texto" }}</p>{% endif %}
       {% if "plan.gestionar" in permisos and p.estado == "vigente" %}<a href="{% url 'evaluacion:plan_editar' p.pk %}">Editar</a> ·
         <a href="{% url 'evaluacion:plan_cerrar' p.pk %}">Cerrar plan</a>{% endif %}
     </div>
@@ -128,18 +130,20 @@
 <div class="tarjeta">
   <h2>Hitos compartidos con el profesor jefe</h2>
   <ul class="linea">
-  {% for h in hitos_visibles %}<li class="hito"><div class="cuando">{{ h.fecha|date:"d-m-Y" }} · {{ h.get_tipo_display }}</div><div class="texto">{{ h.descripcion }}</div></li>
+  {% for h in hitos_visibles %}<li class="hito"><div class="cuando">{{ h.fecha|date:"d-m-Y" }} · {{ h.get_tipo_display }}</div><div class="texto">{{ h.descripcion|priv:"texto" }}</div></li>
   {% empty %}<p class="vacio">No hay hitos compartidos.</p>{% endfor %}
   </ul>
 </div>
 {% endif %}
+
+</div>
 
 {% if consentimientos is not None %}
 <div class="tarjeta tabla-scroll">
   <div class="encabezado"><h2>Consentimientos informados</h2>
     <a class="boton secundario chico" href="{% url 'cumplimiento:consentimiento_nuevo' e.pk %}">Registrar consentimiento</a></div>
   <table class="tabla"><thead><tr><th>Alcance</th><th>Apoderado</th><th>Otorgado</th><th>Estado</th><th></th></tr></thead><tbody>
-  {% for c in consentimientos %}<tr><td data-rotulo="Alcance">{{ c.get_alcance_display }}</td><td data-rotulo="Apoderado">{{ c.apoderado }}</td>
+  {% for c in consentimientos %}<tr><td data-rotulo="Alcance">{{ c.get_alcance_display }}</td><td data-rotulo="Apoderado">{{ c.apoderado|priv:"nombre" }}</td>
     <td data-rotulo="Otorgado">{{ c.fecha_otorgamiento|date:"d-m-Y" }}</td>
     <td data-rotulo="Estado">{% if c.vigente %}<span class="insignia verde">vigente</span>{% else %}<span class="insignia gris">revocado {{ c.fecha_revocacion|date:"d-m-Y" }}</span>{% endif %}</td>
     <td>{% if c.vigente and not c.fecha_revocacion %}<a href="{% url 'cumplimiento:consentimiento_revocar' c.pk %}">Registrar revocación</a>{% endif %}</td></tr>

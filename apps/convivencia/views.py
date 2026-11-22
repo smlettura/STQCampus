@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
+from apps.core.privacidad import datos_visibles
 from apps.auditoria.servicios import registrar
 from apps.core.documentos import respuesta_excel
 from apps.core.filtros import Filtros
@@ -65,6 +66,7 @@ def conflictos(request):
 
 
 @permiso_requerido("convivencia.gestionar")
+@datos_visibles(cuando=lambda r, pk=None, **k: pk is not None)
 def conflicto_form(request, pk=None):
     conflicto = get_object_or_404(Conflicto, pk=pk) if pk else None
     form = ConflictoForm(request.POST or None, instance=conflicto, usuario=request.user)

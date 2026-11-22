@@ -52,6 +52,8 @@ class TextoCifrado(models.BinaryField):
         defaults = {"form_class": forms.CharField, "widget": forms.Textarea(attrs={"rows": 5}),
                     "required": not self.blank, "label": capfirst(self.verbose_name), "help_text": self.help_text,
                     "strip": True}
+        if self.max_length:                                     # campos cortos (p. ej., tipo de NEE): una sola línea
+            defaults.update(max_length=self.max_length, widget=forms.TextInput)
         defaults.update(kwargs)
         form_class = defaults.pop("form_class")
         return form_class(**defaults)

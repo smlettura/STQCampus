@@ -4,7 +4,7 @@
 {% block contenido %}
 <div class="encabezado">
   <div><h1>{{ informe.get_tipo_display }}</h1>
-    <p class="sub"><a href="{% url 'casos:detalle' informe.caso_id %}">{{ informe.caso.estudiante }}</a>
+    <p class="sub"><a href="{% url 'casos:detalle' informe.caso_id %}">{{ informe.caso.estudiante|priv:"nombre" }}</a>
       <span class="insignia {{ informe.estado|color_estado }}">{{ informe.get_estado_display }}</span>
       {% if informe.fecha_entrega %}· entregado el {{ informe.fecha_entrega|date:"d-m-Y" }}{% endif %}</p></div>
   <div class="acciones">
@@ -12,7 +12,7 @@
       <a class="boton secundario" href="{% url 'evaluacion:informe_editar' informe.pk %}">Editar</a>
       <form class="enlinea" method="post" action="{% url 'evaluacion:informe_validar' informe.pk %}" data-confirmar="¿Validar el informe? Ya no podrá editarse.">{% csrf_token %}
         <button class="boton exito" type="submit">Validar</button></form>
-      <form class="enlinea" method="post" action="{% url 'evaluacion:informe_descartar' informe.pk %}" data-confirmar="¿Descartar este borrador?">{% csrf_token %}
+      <form class="enlinea" method="post" action="{% url 'evaluacion:informe_descartar' informe.pk %}" data-confirmar="¿Descartar este borrador?" data-peligro>{% csrf_token %}
         <button class="boton peligro" type="submit">Descartar</button></form>
     {% elif informe.estado == "validado" %}
       <a class="boton" href="{% url 'evaluacion:informe_entregar' informe.pk %}">Registrar entrega presencial</a>
@@ -20,8 +20,27 @@
     <button class="boton secundario" type="button" data-imprimir>Imprimir</button>
   </div>
 </div>
-.</div>
-{% endif %}
+{% if informe.contenido_ia_id %}<div class="aviso info">Redactado a partir de un borrador generado con IA ({{ informe.contenido_ia.modelo }}){% if informe.contenido_ia.validador_id %} y validado por {{ informe.contenido_ia.validador.nombre_completo }} el {{ informe.contenido_ia.fecha_validacion|date:"d-m-Y H:i" }}{% endif %}.</div>{% endif %}
 {% if informe.tipo == "preliminar_fudei" %}<div class="aviso info">Versión preliminar de apoyo interno: el FUDEI oficial se completa en el formato vigente del Mineduc (RF-06).</div>{% endif %}
-<div class="tarjeta"><div class="texto-ia" style="border-style:solid;background:#fff">{{ informe.contenido }}</div></div>
+{% with e=informe.caso.estudiante ia=informe.contenido_ia %}
+<article class="documento-informe">
+  <header class="doc-membrete">
+    <div class="doc-colegio">{{ NOMBRE_COLEGIO }}<small>Equipo psicosocial</small></div>
+    <div class="doc-confidencial">Documento confidencial</div>
+  </header>
+  <h2 class="doc-titulo">{{ informe.get_tipo_display }}</h2>
+  <dl class="doc-datos">
+    <div><dt>Estudiante</dt><dd>{{ e.nombres|priv:"nombre" }} {{ e.apellidos|priv:"nombre" }}</dd></div>
+    <div><dt>Curso</dt><dd>{{ e.curso.nombre }}</dd></div>
+    <div><dt>Fecha</dt><dd>{% if informe.fecha_entrega %}{{ informe.fecha_entrega|date:"d-m-Y" }}{% elif ia.fecha_validacion %}{{ ia.fecha_validacion|date:"d-m-Y" }}{% else %}{% now "d-m-Y" %}{% endif %}</dd></div>
+    <div><dt>Elaborado por</dt><dd>{% if ia.validador %}{{ ia.validador.nombre_completo }}{% else %}{{ informe.caso.responsable.nombre_completo }}{% endif %}</dd></div>
+  </dl>
+  <div class="doc-cuerpo">{{ informe.contenido|formato_informe|priv:"texto" }}</div>
+  <footer class="doc-firma">
+    <div class="doc-linea-firma"></div>
+    <div>{% if ia.validador %}{{ ia.validador.nombre_completo }}{% if ia.validador.especialidad %} · {{ ia.validador.especialidad }}{% endif %}{% else %}{{ informe.caso.responsable.nombre_completo }}{% if informe.caso.responsable.especialidad %} · {{ informe.caso.responsable.especialidad }}{% endif %}{% endif %}</div>
+    <div class="doc-nota">Información sensible de un menor de edad, protegida por la Ley 19.628 y la Ley 21.719. Uso exclusivo del establecimiento y de la familia del estudiante.</div>
+  </footer>
+</article>
+{% endwith %}
 {% endblock %}

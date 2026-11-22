@@ -12,7 +12,7 @@
   <div class="tarjeta">
     <h2>Detalle</h2>
     <dl class="datos"><dt>Medio de verificación</dt><dd>{{ a.medio_verificacion|default:"—" }}</dd>
-      <dt>Descripción</dt><dd style="white-space:pre-line">{{ a.descripcion|default:"—" }}</dd></dl>
+      <dt>Descripción</dt><dd style="white-space:pre-line">{{ a.descripcion|default:"—"|priv:"texto" }}</dd></dl>
   </div>
   <div class="tarjeta">
     <h2>Evidencias</h2>

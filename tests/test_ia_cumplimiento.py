@@ -1,4 +1,4 @@
-"""Módulo de IA reservado (en entrenamiento) y cumplimiento (RF-11, RF-12, RNF-10, RNF-13)."""
+"""Pantalla del copiloto de IA y cumplimiento (RF-11, RF-12, RNF-10, RNF-13)."""
 import datetime
 import json
 
@@ -17,8 +17,8 @@ from apps.ia import servicios as ia
 from .base import PruebaBase
 
 
-class ModuloIAReservadoTest(PruebaBase):
-    """La IA está en entrenamiento: la pantalla existe con datos reales, pero no genera nada (espacio reservado)."""
+class PantallaGenerarInformeTest(PruebaBase):
+    """La pantalla lista las atenciones visibles (sin su texto) y solo habilita el botón con consentimiento «uso_ia»."""
 
     def setUp(self):
         self.caso = Caso.objects.create(estudiante=self.estudiante, tipo_proceso="seguimiento", responsable=self.psicologa,
@@ -29,24 +29,26 @@ class ModuloIAReservadoTest(PruebaBase):
         SesionSeguimiento.objects.create(caso=self.caso, profesional=self.psicologa2, nivel_acceso="autora",
                                          fecha_hora=timezone.now() - datetime.timedelta(days=5), motivo="ansiedad",
                                          nota="Nota privada de otra psicóloga.")
+        self.url = reverse("ia:generar_informe") + "?estudiante=%d" % self.estudiante.pk
 
-    def test_servicio_no_genera(self):
-        self.assertFalse(ia.DISPONIBLE)
-        with self.assertRaises(ia.ModuloIANoDisponible):
-            ia.generar_borrador(estudiante=self.estudiante, sesiones=[], tipo="atencion", secciones=[],
-                                usuario=self.psicologa)
-
-    def test_pantalla_muestra_atenciones_sin_notas_y_boton_deshabilitado(self):
-        url = reverse("ia:generar_informe") + "?estudiante=%d" % self.estudiante.pk
-        r = self.cliente(self.psicologa).get(url)
-        self.assertContains(r, "EN ENTRENAMIENTO")
+    def test_sin_consentimiento_boton_deshabilitado(self):
+        self.assertTrue(ia.DISPONIBLE)
+        r = self.cliente(self.psicologa).get(self.url)
+        self.assertContains(r, "EQUIPO DE IA APAGADO")
         self.assertContains(r, "Conducta en aula")                    # la atención propia del equipo se lista
         self.assertNotContains(r, "Contenido reservado")              # nunca el texto de la sesión
         self.assertNotContains(r, "Ansiedad o estrés")                # ni la sesión privada de otra profesional
-        self.assertRegex(r.content.decode(), r'<button class="boton boton-generar" type="button" disabled')
+        self.assertContains(r, "Sin consentimiento vigente")
+        self.assertRegex(r.content.decode(), r'<button class="boton boton-generar" type="submit"[^>]* disabled')
         self.assertTrue(EventoAuditoria.objects.filter(entidad="estudiante", id_entidad=self.estudiante.pk,
                                                        detalle__contains="generar informe").exists())
-        self.assertEqual(self.cliente(self.psicologa).post(url).status_code, 405)
+        self.assertEqual(self.cliente(self.psicologa).post(self.url).status_code, 405)
+
+    def test_con_consentimiento_boton_habilitado(self):
+        self.consentir(self.estudiante, "uso_ia")
+        r = self.cliente(self.psicologa).get(self.url)
+        self.assertNotRegex(r.content.decode(), r'<button class="boton boton-generar" type="submit"[^>]* disabled')
+        self.assertContains(r, 'action="%s"' % reverse("ia:solicitar"))
 
     def test_solo_equipo_psicosocial(self):
         url = reverse("ia:generar_informe")

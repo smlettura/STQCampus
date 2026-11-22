@@ -7,9 +7,9 @@
 <div class="kpis">
   <div class="kpi"><span class="rotulo">Estudiantes activos</span><span class="valor">{{ activos|miles }}</span><span class="detalle">de {{ matriculados|miles }} matriculados</span></div>
   <div class="kpi"><span class="rotulo">Atenciones este mes</span><span class="valor">{{ atenciones_mes|miles }}</span><span class="detalle">{{ nombre_mes }}</span></div>
-  <a class="kpi" href="{% url 'casos:lista' %}"><span class="rotulo">En seguimiento</span><span class="valor">{{ en_seguimiento|miles }}</span><span class="detalle">estudiantes</span></a>
+  <a class="kpi" {% if "caso.ver_equipo" in permisos or "caso.ver_pie" in permisos %}href="{% url 'casos:lista' %}"{% endif %}><span class="rotulo">En seguimiento</span><span class="valor">{{ en_seguimiento|miles }}</span><span class="detalle">estudiantes</span></a>
   <{% if ve_convivencia %}a href="{% url 'convivencia:conflictos' %}?anio={{ filtros.anio }}"{% else %}div{% endif %} class="kpi"><span class="rotulo">Conflictos registrados</span><span class="valor">{{ conflictos|miles }}</span><span class="detalle">{{ tramos.basica }} básica · {{ tramos.media }} media</span></{% if ve_convivencia %}a{% else %}div{% endif %}>
-  <a class="kpi{% if urgentes %} alerta{% endif %}" href="{% url 'casos:lista' %}?estado=urgentes"><span class="rotulo">Casos urgentes</span><span class="valor">{{ urgentes }}</span><span class="detalle">{% if urgentes %}Revisar ahora →{% else %}sin casos urgentes{% endif %}</span></a>
+  <a class="kpi{% if urgentes %} alerta{% endif %}" {% if "caso.ver_equipo" in permisos or "caso.ver_pie" in permisos %}href="{% url 'casos:lista' %}?estado=urgentes"{% endif %}><span class="rotulo">Casos urgentes</span><span class="valor">{{ urgentes }}</span><span class="detalle">{% if urgentes %}Revisar ahora →{% else %}sin casos urgentes{% endif %}</span></a>
 </div>
 
 <div class="rejilla-2">
@@ -24,7 +24,7 @@
   <div class="tarjeta">
     <h2>Pendientes por prioridad</h2>
     <div class="prioridades">
-      <a class="alta" href="{% url 'casos:lista' %}?estado=urgentes"><span class="nivel">ALTA</span>Casos urgentes sin cerrar<span class="cuenta">{{ urgentes }}</span></a>
+      <a class="alta" {% if "caso.ver_equipo" in permisos or "caso.ver_pie" in permisos %}href="{% url 'casos:lista' %}?estado=urgentes"{% endif %}><span class="nivel">ALTA</span>Casos urgentes sin cerrar<span class="cuenta">{{ urgentes }}</span></a>
       {% if alertas_sin_revisar is not None %}<a class="media" href="{% url 'alertas:lista' %}"><span class="nivel">MEDIA</span>Alertas sin revisar<span class="cuenta">{{ alertas_sin_revisar }}</span></a>{% endif %}
       {% if derivaciones_pendientes is not None %}<a class="media" href="{% url 'casos:derivaciones' %}"><span class="nivel">MEDIA</span>Derivaciones por revisar<span class="cuenta">{{ n_derivaciones }}</span></a>{% endif %}
       {% if protocolos_abiertos is not None %}<a href="{% url 'convivencia:protocolos' %}?estado=abierto"><span class="nivel">BAJA</span>Protocolos abiertos<span class="cuenta">{{ protocolos_abiertos }}</span></a>{% endif %}
@@ -49,25 +49,25 @@
 {% if mis_casos is not None %}
 <div class="rejilla" style="margin-top:12px">
   <div class="tarjeta">
-    <div class="cabecera-tarjeta"><h2>Mis casos activos</h2><a href="{% url 'casos:lista' %}?mios=1">Ver todos</a></div>
-    <ul class="lista-simple">{% for c in mis_casos %}<li><a href="{% url 'casos:detalle' c.pk %}">{{ c.estudiante }} <small class="ayuda" style="margin:0">{{ c.estudiante.curso.nombre }} · {{ c.get_tipo_proceso_display }}</small>{% icono "flecha" 16 %}</a></li>
+    <div class="cabecera-tarjeta"><h2>Mis casos activos</h2><a {% if "caso.ver_equipo" in permisos or "caso.ver_pie" in permisos %}href="{% url 'casos:lista' %}?mios=1"{% endif %}>Ver todos</a></div>
+    <ul class="lista-simple">{% for c in mis_casos %}<li><a href="{% url 'casos:detalle' c.pk %}">{{ c.estudiante|priv:"nombre" }} <small class="ayuda" style="margin:0">{{ c.estudiante.curso.nombre }} · {{ c.get_tipo_proceso_display }}</small>{% icono "flecha" 16 %}</a></li>
       {% empty %}<li class="vacio">No tiene casos activos a su cargo.</li>{% endfor %}</ul>
   </div>
   <div class="tarjeta">
     <div class="cabecera-tarjeta"><h2>Derivaciones por revisar</h2><a href="{% url 'casos:derivaciones' %}">Ver todas</a></div>
-    <ul class="lista-simple">{% for d in derivaciones_pendientes %}<li><span class="fecha">{{ d.fecha_hora|date:"d/m" }}</span><a href="{% url 'casos:abrir' d.pk %}">{{ d.estudiante }} <small class="ayuda" style="margin:0">derivó {{ d.derivante }}</small>{% icono "flecha" 16 %}</a></li>
+    <ul class="lista-simple">{% for d in derivaciones_pendientes %}<li><span class="fecha">{{ d.fecha_hora|date:"d/m" }}</span><a href="{% url 'casos:abrir' d.pk %}">{{ d.estudiante|priv:"nombre" }} <small class="ayuda" style="margin:0">derivó {{ d.derivante }}</small>{% icono "flecha" 16 %}</a></li>
       {% empty %}<li class="vacio">No hay derivaciones pendientes.</li>{% endfor %}</ul>
   </div>
   {% if mis_borradores %}
   <div class="tarjeta">
     <h2>Mis borradores de atención</h2>
-    <ul class="lista-simple">{% for s in mis_borradores %}<li><span class="fecha">{{ s.fecha_hora|date:"d/m" }}</span><a href="{% url 'casos:registrar_atencion' %}?borrador={{ s.pk }}">{{ s.caso.estudiante }}{% icono "flecha" 16 %}</a></li>{% endfor %}</ul>
+    <ul class="lista-simple">{% for s in mis_borradores %}<li><span class="fecha">{{ s.fecha_hora|date:"d/m" }}</span><a href="{% url 'casos:registrar_atencion' %}?borrador={{ s.pk }}">{{ s.caso.estudiante|priv:"nombre" }}{% icono "flecha" 16 %}</a></li>{% endfor %}</ul>
   </div>
   {% endif %}
   {% if avisos %}
   <div class="tarjeta">
     <div class="cabecera-tarjeta"><h2>Reevaluaciones PIE</h2><a href="{% url 'evaluacion:avisos' %}">Ver todas</a></div>
-    <ul class="lista-simple">{% for a in avisos %}<li><span class="fecha">{{ a.fecha_programada|date:"d/m/Y" }}</span><a href="{% url 'evaluacion:detalle' a.evaluacion_id %}">{{ a.evaluacion.caso.estudiante }}{% icono "flecha" 16 %}</a></li>{% endfor %}</ul>
+    <ul class="lista-simple">{% for a in avisos %}<li><span class="fecha">{{ a.fecha_programada|date:"d/m/Y" }}</span><a href="{% url 'evaluacion:detalle' a.evaluacion_id %}">{{ a.evaluacion.caso.estudiante|priv:"nombre" }}{% icono "flecha" 16 %}</a></li>{% endfor %}</ul>
   </div>
   {% endif %}
 </div>

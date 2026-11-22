@@ -63,7 +63,7 @@ class Anotacion(models.Model):
                                    db_column="id_estudiante")
     fecha = models.DateField("fecha", default=timezone.localdate, validators=[_no_futuro_ni_antiguo])
     tipo = models.CharField("tipo", max_length=10, choices=TIPOS)
-    descripcion = models.TextField("descripción", validators=[validar_texto_minimo(10)])
+    descripcion = TextoCifrado("descripción", validators=[validar_texto_minimo(10)])
     registrada_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="anotaciones",
                                        db_column="id_registrada_por")
     registrada_en = models.DateTimeField("registrada el", default=timezone.now, editable=False)
@@ -91,7 +91,7 @@ class RegistroConductual(models.Model):
                                    related_name="registros_conductuales", db_column="id_estudiante")
     fecha = models.DateField("fecha", default=timezone.localdate, validators=[_no_futuro_ni_antiguo])
     categoria = models.CharField("categoría", max_length=10, choices=CATEGORIAS)
-    descripcion = models.TextField("descripción", validators=[validar_texto_minimo(10)])
+    descripcion = TextoCifrado("descripción", validators=[validar_texto_minimo(10)])
     porcentaje_asistencia = models.DecimalField(
         "porcentaje de asistencia", max_digits=5, decimal_places=1, null=True, blank=True,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
@@ -225,7 +225,7 @@ class EvidenciaActividad(models.Model):
     id = models.BigAutoField(primary_key=True, db_column="id_evidencia")
     actividad = models.ForeignKey(ActividadPlan, on_delete=models.CASCADE, related_name="evidencias",
                                   db_column="id_actividad")
-    nombre_archivo = models.CharField("nombre del archivo", max_length=160)
+    nombre_archivo = TextoCifrado("nombre del archivo", max_length=160)
     ruta_objeto = models.CharField("ruta del objeto", max_length=255, unique=True, editable=False)
     hash_sha256 = models.CharField("huella SHA-256", max_length=64, editable=False)
     subida_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+",

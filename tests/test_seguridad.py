@@ -179,3 +179,36 @@ class SegundoFactorTest(PruebaBase):
         c.post(reverse("cuentas:asignacion_finalizar", args=[asignacion.pk]))
         asignacion.refresh_from_db()
         self.assertIsNone(asignacion.vigente_hasta)
+
+
+class DesfaseRelojTest(PruebaBase):
+    """Si el reloj del teléfono o del computador está desajustado, se explica la causa (sin aceptar el código)."""
+
+    def test_detecta_desfase_de_minutos_y_de_horas(self):
+        from apps.cuentas import totp
+        secreto = pyotp.random_base32()
+        ahora = 1_790_000_000
+        self.assertEqual(totp.desfase_probable(secreto, pyotp.TOTP(secreto).at(ahora + 150), ahora), 150)
+        self.assertEqual(totp.desfase_probable(secreto, pyotp.TOTP(secreto).at(ahora - 3 * 3600), ahora), -3 * 3600)
+        self.assertIn("3 horas", totp.mensaje_desfase(-3 * 3600))
+        self.assertIsNone(totp.desfase_probable(secreto, "12345", ahora))
+
+    def test_configurar_explica_el_desfase_y_no_acepta_el_codigo(self):
+        import time
+        c = self.cliente(self.psicologa, mfa=False)
+        c.get(reverse("cuentas:configurar_2fa"))
+        secreto = c.session["totp_pendiente"]
+        r = c.post(reverse("cuentas:configurar_2fa"), {"codigo": pyotp.TOTP(secreto).at(time.time() + 3 * 3600)})
+        self.assertContains(r, "corresponde a otra hora")
+        self.psicologa.refresh_from_db()
+        self.assertFalse(self.psicologa.mfa_activo)
+
+    def test_comando_restablece_el_segundo_factor(self):
+        import io
+
+        from django.core.management import call_command
+        self.psicologa.secreto_totp, self.psicologa.mfa_activo = "JBSWY3DPEHPK3PXP", True
+        self.psicologa.save()
+        call_command("restablecer_2fa", self.psicologa.correo, stdout=io.StringIO())
+        self.psicologa.refresh_from_db()
+        self.assertEqual((self.psicologa.mfa_activo, self.psicologa.secreto_totp), (False, None))

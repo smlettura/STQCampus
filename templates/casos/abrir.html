@@ -1,7 +1,8 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block titulo %}Abrir caso{% endblock %}
 {% block contenido %}
-<h1>Abrir caso — {{ derivacion.estudiante }}</h1>
+<h1>Abrir caso — {{ derivacion.estudiante|priv:"nombre" }}</h1>
 <p class="sub">{{ derivacion.estudiante.curso }}</p>
 <div class="rejilla-2">
   <div class="tarjeta formulario">
@@ -15,7 +16,7 @@
     <h2>Derivación</h2>
     <dl class="datos"><dt>Derivó</dt><dd>{{ derivacion.derivante }}</dd>
       <dt>Fecha</dt><dd>{{ derivacion.fecha_hora|date:"d-m-Y H:i" }}</dd></dl>
-    <p><strong>Motivo</strong></p><p>{{ derivacion.motivo|linebreaksbr }}</p>
+    <p><strong>Motivo</strong></p><p>{{ derivacion.motivo|linebreaksbr|priv:"texto" }}</p>
   </div>
 </div>
 {% endblock %}

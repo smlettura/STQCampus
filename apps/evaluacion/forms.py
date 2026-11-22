@@ -14,7 +14,8 @@ class EvaluacionForm(FormularioModelo):
         model = EvaluacionDiagnostica
         fields = ["tipo_evaluacion", "tipo_nee", "fecha_evaluacion", "fecha_reevaluacion", "diagnostico"]
         help_texts = {"diagnostico": "Se guarda cifrado. Puede completarlo al cierre de la evaluación.",
-                      "tipo_nee": "Por ejemplo: trastorno específico del lenguaje, TEA, discapacidad intelectual leve."}
+                      "tipo_nee": "Por ejemplo: trastorno específico del lenguaje, TEA, discapacidad intelectual leve. "
+                                  "Se guarda cifrado."}
 
     def __init__(self, *args, caso=None, **kwargs):
         super().__init__(*args, **kwargs)

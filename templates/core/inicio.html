@@ -40,7 +40,7 @@
     <h2>Derivaciones por revisar</h2>
     <table class="tabla"><tbody>
     {% for d in derivaciones_pendientes %}
-      <tr><td><a href="{% url 'casos:abrir' d.pk %}">{{ d.estudiante }}</a><br><small class="ayuda">{{ d.estudiante.curso }} · derivó {{ d.derivante }}</small></td>
+      <tr><td><a href="{% url 'casos:abrir' d.pk %}">{{ d.estudiante|priv:"nombre" }}</a><br><small class="ayuda">{{ d.estudiante.curso }} · derivó {{ d.derivante }}</small></td>
         <td class="num">{{ d.fecha_hora|date:"d-m-Y" }}</td></tr>
     {% endfor %}
     </tbody></table>
@@ -51,7 +51,7 @@
     <h2>Mis casos activos</h2>
     <table class="tabla"><tbody>
     {% for c in mis_casos %}
-      <tr><td><a href="{% url 'casos:detalle' c.pk %}">{{ c.estudiante }}</a><br><small class="ayuda">{{ c.get_tipo_proceso_display }}</small></td>
+      <tr><td><a href="{% url 'casos:detalle' c.pk %}">{{ c.estudiante|priv:"nombre" }}</a><br><small class="ayuda">{{ c.get_tipo_proceso_display }}</small></td>
         <td><span class="insignia {{ c.estado|color_estado }}">{{ c.get_estado_display }}</span></td></tr>
     {% endfor %}
     </tbody></table>
@@ -62,7 +62,7 @@
     <h2>Mis derivaciones</h2>
     <table class="tabla"><tbody>
     {% for d in mis_derivaciones %}
-      <tr><td>{{ d.estudiante }}<br><small class="ayuda">{{ d.fecha_hora|date:"d-m-Y H:i" }}</small></td>
+      <tr><td>{{ d.estudiante|priv:"nombre" }}<br><small class="ayuda">{{ d.fecha_hora|date:"d-m-Y H:i" }}</small></td>
         <td>{% if d.pendiente %}<span class="insignia ambar">en revisión</span>{% else %}<span class="insignia verde">recibida por el equipo</span>{% endif %}</td></tr>
     {% endfor %}
     </tbody></table>
@@ -74,7 +74,7 @@
     <h2>Reevaluaciones PIE</h2>
     <table class="tabla"><tbody>
     {% for a in avisos %}
-      <tr><td><a href="{% url 'evaluacion:detalle' a.evaluacion_id %}">{{ a.evaluacion.caso.estudiante }}</a></td>
+      <tr><td><a href="{% url 'evaluacion:detalle' a.evaluacion_id %}">{{ a.evaluacion.caso.estudiante|priv:"nombre" }}</a></td>
         <td class="num">{% if a.fecha_programada < hoy %}<span class="insignia rojo">vencida {{ a.fecha_programada|date:"d-m-Y" }}</span>{% else %}{{ a.fecha_programada|date:"d-m-Y" }}{% endif %}</td></tr>
     {% endfor %}
     </tbody></table>

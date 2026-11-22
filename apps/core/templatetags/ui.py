@@ -58,6 +58,12 @@ ICONOS = {
                "m18 6-2.5 2.5", "m8.5 15.5-2.5 2.5"],
     "chevron": ["m6 9 6 6 6-6"],
     "editar": ["M12 20h9", "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"],
+    "ojo_tachado": ["M3 3l18 18", "M10.6 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2",
+                    "M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7a9.8 9.8 0 0 0 5.4-1.6", "M9.9 9.9a3 3 0 0 0 4.2 4.2"],
+    "exito": ["M22 11.1V12a10 10 0 1 1-5.9-9.1", "M22 4 12 14.01l-3-3"],
+    "error": ["M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20z", "M15 9l-6 6", "M9 9l6 6"],
+    "advertencia": ["M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z", "M12 9v4", "M12 17h.01"],
+    "cerrar": ["M18 6 6 18", "M6 6l12 12"],
     "candado": ["M6 11h12a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z", "M8 11V7a4 4 0 0 1 8 0v4"],
 }
 
@@ -65,6 +71,14 @@ ICONOS = {
 @register.filter
 def rut(valor):
     return formatear_rut(valor)
+
+
+@register.filter
+def priv(valor, tipo="nombre"):
+    """Modo privado: {{ estudiante|priv }}, {{ e.rut|rut|priv:"rut" }}, {{ nota|priv:"texto" }}.
+    Sin el modo activo devuelve el valor intacto; va siempre al final de la cadena de filtros."""
+    from apps.core import privacidad
+    return privacidad.enmascarar(valor, tipo) if privacidad.activo() else valor
 
 
 @register.filter
@@ -127,3 +141,73 @@ def url_con(context, **cambios):
             params[k] = v
     params.pop("pagina", None) if "pagina" not in cambios else None
     return "?" + urlencode(params)
+
+
+# ---------------------------------------------------------------------------------------------- texto de informes
+_NEGRITA = __import__("re").compile(r"\*\*(.+?)\*\*")
+_MARCA = __import__("re").compile(r"\[(FUERA DE MI ALCANCE|VERIFICAR|CONTENIDO OMITIDO|PENDIENTE)([^\]]*)\]")
+
+
+def _en_linea(texto):
+    from django.utils.html import escape
+    t = escape(texto)
+    t = _NEGRITA.sub(r"<strong>\1</strong>", t)
+    return _MARCA.sub(r'<span class="marca-revisar">[\1\2]</span>', t)
+
+
+@register.filter
+def formato_informe(texto):
+    """Presenta el texto de un informe (formato simple tipo Markdown que usan las profesionales y el copiloto):
+    «#/##/###» títulos, «* » o «- » viñetas, «1. » listas numeradas y **negrita**. Todo se escapa antes de dar formato,
+    así que no se puede inyectar HTML. Omite un título inicial «Informe…», porque el documento ya lo muestra."""
+    import re
+    lineas = (texto or "").replace("\r\n", "\n").split("\n")
+    while lineas and not lineas[0].strip():
+        lineas.pop(0)
+    # El documento ya muestra el título: se omite un título inicial «Informe…» o uno de nivel 1-2 seguido de secciones.
+    if lineas and (re.match(r"^#{1,3}\s+informe\b", lineas[0].strip(), re.I) or
+                   (re.match(r"^#{1,2}\s", lineas[0].strip()) and any(re.match(r"^###\s", l.strip()) for l in lineas[1:]))):
+        lineas.pop(0)
+    html, parrafo, lista = [], [], None
+
+    def cerrar_parrafo():
+        if parrafo:
+            html.append("<p>%s</p>" % "<br>".join(parrafo))
+            parrafo.clear()
+
+    def cerrar_lista():
+        nonlocal lista
+        if lista:
+            html.append("</%s>" % lista)
+            lista = None
+
+    for cruda in lineas:
+        linea = cruda.strip()
+        titulo = re.match(r"^(#{1,6})\s+(.*)$", linea)
+        vineta = re.match(r"^[*\-•]\s+(.*)$", linea)
+        numero = re.match(r"^\d+[.)]\s+(.*)$", linea)
+        if not linea:
+            cerrar_parrafo()
+            cerrar_lista()
+        elif titulo:
+            cerrar_parrafo()
+            cerrar_lista()
+            nivel = "h3" if len(titulo.group(1)) <= 3 else "h4"
+            html.append("<%s>%s</%s>" % (nivel, _en_linea(titulo.group(2).strip("# ")), nivel))
+        elif vineta or numero:
+            cerrar_parrafo()
+            tipo = "ul" if vineta else "ol"
+            if lista != tipo:
+                cerrar_lista()
+                html.append("<%s>" % tipo)
+                lista = tipo
+            html.append("<li>%s</li>" % _en_linea((vineta or numero).group(1)))
+        else:
+            cerrar_lista()
+            parrafo.append(_en_linea(linea))
+    cerrar_parrafo()
+    cerrar_lista()
+    # Títulos sin contenido (por ejemplo «Advertencias para la profesional» vacío) no se muestran.
+    html = [h for k, h in enumerate(html)
+            if not (h.startswith(("<h3>", "<h4>")) and (k + 1 == len(html) or html[k + 1].startswith(("<h3>", "<h4>"))))]
+    return mark_safe("\n".join(html))

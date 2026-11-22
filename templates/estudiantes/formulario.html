@@ -2,7 +2,7 @@
 {% load ui %}
 {% block titulo %}{% if e %}Editar estudiante{% else %}Registrar estudiante{% endif %}{% endblock %}
 {% block contenido %}
-<div class="titulo-pagina"><h1>{% if e %}Editar datos de {{ e }}{% else %}Registrar estudiante{% endif %}</h1>
+<div class="titulo-pagina"><h1>{% if e %}Editar datos de {{ e|priv }}{% else %}Registrar estudiante{% endif %}</h1>
   <span class="contexto">Los campos con <span class="req">*</span> son obligatorios</span></div>
 {% if form.non_field_errors %}<div class="aviso error" role="alert">{% for x in form.non_field_errors %}<div>{{ x }}</div>{% endfor %}</div>{% endif %}
 <form method="post" id="form-estudiante" novalidate>

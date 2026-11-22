@@ -1,7 +1,7 @@
 """Configuración de la Plataforma de Bienestar Psicológico Estudiantil.
 
 Todos los valores sensibles se leen desde variables de entorno (o desde un archivo .env en la raíz del proyecto).
-En producción las variables provienen de la configuración de App Service con referencias a Key Vault.
+En producción (AWS) las variables se cargan desde un secreto JSON de AWS Secrets Manager (variable AWS_SECRETS_ID).
 """
 import base64
 import hashlib
@@ -28,6 +28,33 @@ def _cargar_env(ruta):
 
 
 _cargar_env(BASE_DIR / ".env")
+
+
+REGION_AWS_DEFECTO = "us-east-1"   # región del piloto (Norte de Virginia), aprobada el 05/11/2026
+
+
+def region_aws():
+    """Región de AWS para todos los clientes (Secrets Manager y S3). Se define con AWS_REGION; por defecto us-east-1."""
+    return os.environ.get("AWS_REGION", "").strip() or REGION_AWS_DEFECTO
+
+
+def _cargar_secretos_aws():
+    """En AWS lee un secreto JSON de Secrets Manager (p. ej. stq/produccion) y lo publica como variables de entorno.
+    No sobrescribe variables ya definidas. En local, sin AWS_SECRETS_ID, no hace nada."""
+    secreto = os.environ.get("AWS_SECRETS_ID", "").strip()
+    if not secreto:
+        return
+    import json
+
+    import boto3
+
+    cliente = boto3.client("secretsmanager", region_name=region_aws())
+    valores = json.loads(cliente.get_secret_value(SecretId=secreto)["SecretString"])
+    for clave, valor in valores.items():
+        os.environ.setdefault(clave, str(valor))
+
+
+_cargar_secretos_aws()
 
 
 def env(clave, defecto=None):
@@ -166,14 +193,33 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# Los adjuntos se guardan cifrados (AES-256-GCM) por la aplicación. ALMACENAMIENTO=local usa carpetas del equipo;
+# ALMACENAMIENTO=s3 (producción en AWS) usa un bucket privado con cifrado SSE-KMS para los adjuntos y un bucket con
+# Object Lock para la copia diaria de la bitácora.
+ADJUNTOS_DIR = Path(env("ADJUNTOS_DIR", str(BASE_DIR / "almacenamiento" / "adjuntos")))
+BITACORA_EXPORT_DIR = Path(env("BITACORA_EXPORT_DIR", str(BASE_DIR / "almacenamiento" / "auditoria-inmutable")))
+ALMACENAMIENTO = env("ALMACENAMIENTO", "local")
+AWS_REGION = region_aws()
+if ALMACENAMIENTO == "s3":
+    _s3 = {"region_name": AWS_REGION, "default_acl": None, "file_overwrite": False,
+           "object_parameters": {"ServerSideEncryption": "aws:kms", **({"SSEKMSKeyId": env("AWS_KMS_KEY_ID")}
+                                                                      if env("AWS_KMS_KEY_ID") else {})}}
+    _ALMACEN_ADJUNTOS = {"BACKEND": "storages.backends.s3.S3Storage",
+                         "OPTIONS": {**_s3, "bucket_name": env("AWS_S3_ADJUNTOS")}}
+    _ALMACEN_BITACORA = {"BACKEND": "storages.backends.s3.S3Storage",
+                         "OPTIONS": {**_s3, "bucket_name": env("AWS_S3_BITACORA")}}
+else:
+    _ALMACEN_ADJUNTOS = {"BACKEND": "django.core.files.storage.FileSystemStorage",
+                         "OPTIONS": {"location": str(ADJUNTOS_DIR)}}
+    _ALMACEN_BITACORA = {"BACKEND": "django.core.files.storage.FileSystemStorage",
+                         "OPTIONS": {"location": str(BITACORA_EXPORT_DIR)}}
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "adjuntos": _ALMACEN_ADJUNTOS,
+    "bitacora": _ALMACEN_BITACORA,
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage" if not (DEBUG or EN_PRUEBAS)
                     else "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
-# Los adjuntos se guardan cifrados. En producción esta carpeta se reemplaza por el contenedor «adjuntos» de Blob Storage.
-ADJUNTOS_DIR = Path(env("ADJUNTOS_DIR", str(BASE_DIR / "almacenamiento" / "adjuntos")))
-BITACORA_EXPORT_DIR = Path(env("BITACORA_EXPORT_DIR", str(BASE_DIR / "almacenamiento" / "auditoria-inmutable")))
 ADJUNTO_MAX_MB = int(env("ADJUNTO_MAX_MB", "10"))
 DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
@@ -191,7 +237,7 @@ if not CIFRADO_CLAVES:
         warnings.warn("CIFRADO_CLAVES no definida: se usa una clave derivada de SECRET_KEY (solo desarrollo).")
         CIFRADO_CLAVES = {"dev": hashlib.sha256(("cifrado:" + SECRET_KEY).encode()).digest()}
     else:
-        raise ImproperlyConfigured("Defina CIFRADO_CLAVES en el entorno (clave de Key Vault).")
+        raise ImproperlyConfigured("Defina CIFRADO_CLAVES en el entorno (secreto en AWS Secrets Manager).")
 CIFRADO_CLAVE_ACTIVA = next(iter(CIFRADO_CLAVES))
 for _id, _k in CIFRADO_CLAVES.items():
     if len(_k) != 32:
@@ -223,8 +269,23 @@ LOGIN_MAX_INTENTOS = int(env("LOGIN_MAX_INTENTOS", "5"))
 LOGIN_BLOQUEO_MINUTOS = int(env("LOGIN_BLOQUEO_MINUTOS", "15"))
 PASSWORD_RESET_TIMEOUT = 60 * 60           # el enlace para restablecer la contraseña vale 1 hora
 RECORDAR_CORREO_DIAS = 30                  # «Recordarme» guarda solo el correo, nunca la contraseña ni la sesión
+# Los mensajes de confirmación pueden nombrar a un estudiante: se guardan en la sesión (servidor), no en una cookie.
+MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
-CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "bienestar"}}
+# Caché compartida en la base de datos. La guardan el bloqueo por intentos fallidos de ingreso y de segundo factor, y
+# la antirrepetición de los códigos TOTP. Una caché en memoria es propia de cada proceso: con varios trabajadores de
+# Gunicorn, un mismo código TOTP podría aceptarse una vez en cada trabajador. La tabla la crea la migración
+# core.0002_cache_compartida (comando createcachetable).
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.db.DatabaseCache", "LOCATION": "cache_compartida",
+                      "TIMEOUT": 300, "OPTIONS": {"MAX_ENTRIES": 5000}}}
+
+# ------------------------------------------------------------------ copiloto de IA (equipo propio con Ollama)
+IA_HABILITADA = env_bool("IA_HABILITADA", True)
+IA_MODELO = env("IA_MODELO", "stq-copiloto")     # o «gemma2:9b»: el prompt de sistema v4 se envía en cada solicitud
+IA_NUM_GPU = None if env("IA_NUM_GPU", "0") == "" else int(env("IA_NUM_GPU", "0"))   # 0 = solo CPU, como se midió
+IA_KEEP_ALIVE = env("IA_KEEP_ALIVE", "60m")      # cuánto tiempo Ollama mantiene el modelo en memoria entre borradores
+# Nombres de instituciones que la seudonimización reemplaza por [INSTITUCION] (el primero se usa al reidentificar).
+IA_INSTITUCIONES = env_lista("IA_INSTITUCIONES", "Colegio Santa Teresa,Santa Teresa,Quilpué")
 
 # ------------------------------------------------------------------ correo
 EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
@@ -242,10 +303,13 @@ REEVALUACION_ANIOS_TRANSITORIA = 2       # RF-08: reevaluación bianual de NEE t
 AVISO_REEVALUACION_DIAS = int(env("AVISO_REEVALUACION_DIAS", "60"))
 PLAZO_DENUNCIA_HORAS = 24                # Código Procesal Penal, arts. 175 y 176
 ARCO_PLAZO_DIAS = int(env("ARCO_PLAZO_DIAS", "30"))   # ajustar al plazo legal vigente
-TAREAS_TOKEN = env("TAREAS_TOKEN", "")    # token que envía Azure Functions al invocar las tareas programadas
+# Las tareas diaria y mensual se ejecutan con «python manage.py ejecutar_tarea diaria|mensual», que en AWS dispara
+# EventBridge Scheduler mediante Systems Manager Run Command. TAREAS_TOKEN solo habilita el punto HTTP de respaldo.
+TAREAS_TOKEN = env("TAREAS_TOKEN", "")
 
 # ------------------------------------------------------------------ módulo de IA
-# Espacio reservado: el modelo está en entrenamiento y la plataforma aún no genera contenido (ver apps/ia/servicios.py).
+# Gemma 2 9B se usa sin reentrenamiento: se configura con un Modelfile de Ollama en el equipo de IA. La inferencia aún
+# no está conectada a la plataforma (ver apps/ia/servicios.py y docs/ia/Modelfile).
 
 # ------------------------------------------------------------------ API REST
 REST_FRAMEWORK = {

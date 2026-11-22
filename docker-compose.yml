@@ -33,7 +33,7 @@ services:
       - "8000:8000"
     environment:
       DJANGO_DEBUG: "0"
-      HTTPS_OBLIGATORIO: "0"                 # solo local; en Azure el tráfico es HTTPS
+      HTTPS_OBLIGATORIO: "0"                 # solo local; en AWS el balanceador termina el TLS
       DJANGO_SECRET_KEY: cambiar-esta-clave-local-por-una-generada-con-secrets-token-urlsafe
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
       # Genere su propia clave: python manage.py generar_clave_cifrado --id v1

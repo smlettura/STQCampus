@@ -16,7 +16,7 @@ class EvaluacionDiagnostica(models.Model):
     id = models.BigAutoField(primary_key=True, db_column="id_evaluacion")
     caso = models.ForeignKey("casos.Caso", on_delete=models.CASCADE, related_name="evaluaciones", db_column="id_caso")
     tipo_evaluacion = models.CharField("tipo de evaluación", max_length=12, choices=TIPOS, default="ingreso")
-    tipo_nee = models.CharField("tipo de NEE", max_length=80)
+    tipo_nee = TextoCifrado("tipo de NEE", max_length=80)                # dato de salud (Ley 21.719): se guarda cifrado
     diagnostico = TextoCifrado("diagnóstico integral", blank=True)
     fecha_evaluacion = models.DateField("fecha de evaluación", validators=[validar_no_futuro])
     fecha_reevaluacion = models.DateField("fecha de reevaluación", null=True, blank=True,
@@ -98,8 +98,8 @@ class PlanApoyo(models.Model):
     evaluacion = models.ForeignKey(EvaluacionDiagnostica, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name="planes", db_column="id_evaluacion")
     tipo = models.CharField("tipo", max_length=4, choices=TIPOS)
-    adecuaciones = models.TextField("adecuaciones para el aula",
-                                    help_text="Visible para el profesor jefe. No incluya información clínica.")
+    adecuaciones = TextoCifrado("adecuaciones para el aula",
+                                help_text="Visible para el profesor jefe. No incluya información clínica.")
     detalle = TextoCifrado("detalle del plan", blank=True)
     fecha_inicio = models.DateField("fecha de inicio")
     fecha_termino = models.DateField("fecha de término", null=True, blank=True)
@@ -180,8 +180,8 @@ class Informe(models.Model):
         if self.estado in ("validado", "entregado"):
             if not (self.contenido or "").strip():
                 errores["contenido"] = "El informe no tiene contenido."
-            if "[VERIFICAR" in (self.contenido or "").upper():
-                errores["contenido"] = "El texto aún tiene marcas [VERIFICAR]; revíselas antes de validar."
+            if "[VERIFICAR" in (self.contenido or "").upper() or "[PENDIENTE" in (self.contenido or "").upper():
+                errores["contenido"] = "El texto aún tiene marcas [VERIFICAR] o [PENDIENTE]; revíselas antes de validar."
             if self.contenido_ia_id and self.contenido_ia.estado != "validado":
                 errores["estado"] = ("El informe usa un borrador del módulo de IA que aún no tiene validación humana "
                                      "(RF-18).")

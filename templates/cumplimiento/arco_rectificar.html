@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Rectificación ARCO+{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Rectificar datos</h1><p class="sub">Solicitud n.º {{ s.pk }} · {{ s.estudiante|priv:"nombre" }}. Cambie solo lo que el titular pidió corregir.</p></div>
+</div>
+<form method="post" class="columna-form ancha">{% csrf_token %}
+  <section class="tarjeta formulario">
+    <h2>Datos del estudiante</h2>
+    {% with form=f_est %}{% include "comun/_campos.html" %}{% endwith %}
+  </section>
+  <section class="tarjeta formulario" style="margin-top:12px">
+    <h2>Contacto del titular</h2>
+    {% with form=f_apo %}{% include "comun/_campos.html" %}{% endwith %}
+  </section>
+  <div class="pie-form" style="margin-top:12px"><button class="boton" type="submit">Aplicar rectificación</button>
+    <a class="boton secundario" href="{% url 'cumplimiento:arco_detalle' s.pk %}">Cancelar</a></div>
+  <p class="ayuda">En el historial y en la bitácora queda qué campos cambiaron, nunca los valores anteriores ni los nuevos.</p>
+</form>
+{% endblock %}

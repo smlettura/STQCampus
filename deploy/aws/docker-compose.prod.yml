@@ -1,0 +1,57 @@
+# Producción del piloto en una EC2 t4g.small (ARM, 2 vCPU, 2 GiB) en us-east-1.
+#   CloudFront (HTTPS, certificado ACM) → proxy nginx :443 (TLS, certificado Let's Encrypt) → Gunicorn :8000 (interno)
+# El grupo de seguridad de la instancia admite 443 solo desde la lista de prefijos administrada
+# com.amazonaws.global.cloudfront.origin-facing. El puerto 8000 no se publica. Ver deploy/aws/README.md.
+services:
+  app:
+    image: ${IMAGEN:?Defina IMAGEN, por ejemplo <cuenta>.dkr.ecr.us-east-1.amazonaws.com/stq-app:1.1}
+    container_name: stq-app
+    restart: unless-stopped
+    expose: ["8000"]
+    environment:
+      DJANGO_DEBUG: "0"
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_SECRETS_ID: ${AWS_SECRETS_ID:-stq/produccion}
+      DB_ENGINE: mysql
+      DB_SSL_CA: /app/certs/rds-global-bundle.pem
+      ALMACENAMIENTO: s3
+      AWS_S3_ADJUNTOS: ${AWS_S3_ADJUNTOS:-stq-adjuntos}
+      AWS_S3_BITACORA: ${AWS_S3_BITACORA:-stq-bitacora-inmutable}
+      # Medido en local: unos 77 MB por trabajador en reposo; 3 trabajadores caben con holgura en 2 GiB.
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
+    mem_limit: 1g
+    logging:
+      driver: awslogs
+      options: {awslogs-region: "${AWS_REGION:-us-east-1}", awslogs-group: /stq/app, awslogs-create-group: "true"}
+
+  proxy:
+    image: nginx:1.27-alpine
+    container_name: stq-proxy
+    restart: unless-stopped
+    depends_on: [app]
+    ports: ["443:443", "80:80"]   # el 80 solo existe en la variante sin CloudFront (redirige a https)
+    environment:
+      DOMINIO_ORIGEN: ${DOMINIO_ORIGEN:?Defina DOMINIO_ORIGEN, por ejemplo origen.<dominio>}
+      CLAVE_ORIGEN: ${CLAVE_ORIGEN:?Defina CLAVE_ORIGEN (se lee de Secrets Manager en iniciar.sh)}
+    volumes:
+      - ${PLANTILLA_PROXY:-./proxy/stq.conf.template}:/etc/nginx/templates/default.conf.template:ro
+      - certificados:/etc/letsencrypt:ro
+    # Recarga cada 12 h para tomar el certificado renovado.
+    command: ["/bin/sh", "-c", "(while :; do sleep 43200; nginx -s reload; done) & exec /docker-entrypoint.sh nginx -g 'daemon off;'"]
+    mem_limit: 128m
+    logging:
+      driver: awslogs
+      options: {awslogs-region: "${AWS_REGION:-us-east-1}", awslogs-group: /stq/proxy, awslogs-create-group: "true"}
+
+  certificados:
+    # Emite y renueva el certificado del origen con el desafío DNS-01 en Route 53 (no requiere abrir el puerto 80).
+    image: certbot/dns-route53:v2.11.0
+    container_name: stq-certbot
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c", "while :; do certbot renew --quiet; sleep 43200; done"]
+    volumes:
+      - certificados:/etc/letsencrypt
+    mem_limit: 128m
+
+volumes:
+  certificados:

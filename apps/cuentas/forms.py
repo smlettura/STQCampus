@@ -179,4 +179,3 @@ class NuevaContrasenaForm(FormularioBase, SetPasswordForm):
         if commit:
             usuario.save()
         return usuario
-

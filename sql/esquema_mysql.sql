@@ -4,9 +4,10 @@
 -- la base es `python manage.py migrate` (ver README). Si lo usa directamente:
 --   mysql -u root -p < sql/00_crear_bd_y_usuarios.sql
 --   mysql -u bienestar_migra -p bienestar < sql/esquema_mysql.sql
--- Los campos sensibles (notas y acuerdos de atenciones, motivos, relatos de alertas, conflictos y protocolos,
--- diagnósticos, adecuaciones, informes) son LONGBLOB: guardan
--- texto cifrado con AES-256-GCM por la aplicación; la base nunca ve el texto en claro.
+-- Las columnas LONGBLOB (salvo fragmento_normativo.embedding) guardan texto cifrado con AES-256-GCM por la aplicación:
+-- notas y acuerdos de atenciones, motivos de derivación, hitos, nombres de archivos adjuntos, tipo de NEE, diagnósticos,
+-- aportes, adecuaciones y detalle de planes, informes, anotaciones, situación conductual, conflictos, protocolos,
+-- relatos y gestiones de alertas, contenido de IA y el secreto del segundo factor. La base nunca ve ese texto en claro.
 -- La bitácora `evento_auditoria` es de solo inserción: al final se otorgan permisos mínimos al usuario de aplicación.
 -- =====================================================================================================================
 
@@ -54,7 +55,7 @@ CREATE TABLE `anotacion` (
   `id_anotacion` bigint NOT NULL AUTO_INCREMENT,
   `fecha` date NOT NULL,
   `tipo` varchar(10) NOT NULL,
-  `descripcion` longtext NOT NULL,
+  `descripcion` longblob NOT NULL,
   `registrada_en` datetime(6) NOT NULL,
   `id_estudiante` bigint NOT NULL,
   `id_registrada_por` bigint NOT NULL,
@@ -274,7 +275,7 @@ CREATE TABLE `django_session` (
 CREATE TABLE `documento` (
   `id_documento` bigint NOT NULL AUTO_INCREMENT,
   `tipo` varchar(20) NOT NULL,
-  `nombre_archivo` varchar(160) NOT NULL,
+  `nombre_archivo` longblob NOT NULL,
   `ruta_objeto` varchar(255) NOT NULL,
   `hash_sha256` varchar(64) NOT NULL,
   `fecha_carga` datetime(6) NOT NULL,
@@ -334,7 +335,7 @@ CREATE TABLE `estudiante_apoderado` (
 CREATE TABLE `evaluacion_diagnostica` (
   `id_evaluacion` bigint NOT NULL AUTO_INCREMENT,
   `tipo_evaluacion` varchar(12) NOT NULL,
-  `tipo_nee` varchar(80) NOT NULL,
+  `tipo_nee` longblob NOT NULL,
   `diagnostico` longblob NOT NULL,
   `fecha_evaluacion` date NOT NULL,
   `fecha_reevaluacion` date DEFAULT NULL,
@@ -364,7 +365,7 @@ CREATE TABLE `evento_auditoria` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 CREATE TABLE `evidencia_actividad` (
   `id_evidencia` bigint NOT NULL AUTO_INCREMENT,
-  `nombre_archivo` varchar(160) NOT NULL,
+  `nombre_archivo` longblob NOT NULL,
   `ruta_objeto` varchar(255) NOT NULL,
   `hash_sha256` varchar(64) NOT NULL,
   `fecha_carga` datetime(6) NOT NULL,
@@ -403,7 +404,7 @@ CREATE TABLE `gestion_alerta` (
 CREATE TABLE `hito` (
   `id_hito` bigint NOT NULL AUTO_INCREMENT,
   `tipo` varchar(20) NOT NULL,
-  `descripcion` longtext NOT NULL,
+  `descripcion` longblob NOT NULL,
   `fecha` date NOT NULL,
   `visible_profesor_jefe` tinyint(1) NOT NULL,
   `id_caso` bigint NOT NULL,
@@ -478,7 +479,7 @@ CREATE TABLE `permiso` (
 CREATE TABLE `plan_apoyo` (
   `id_plan` bigint NOT NULL AUTO_INCREMENT,
   `tipo` varchar(4) NOT NULL,
-  `adecuaciones` longtext NOT NULL,
+  `adecuaciones` longblob NOT NULL,
   `detalle` longblob NOT NULL,
   `fecha_inicio` date NOT NULL,
   `fecha_termino` date DEFAULT NULL,
@@ -557,7 +558,7 @@ CREATE TABLE `registro_conductual` (
   `id_registro` bigint NOT NULL AUTO_INCREMENT,
   `fecha` date NOT NULL,
   `categoria` varchar(10) NOT NULL,
-  `descripcion` longtext NOT NULL,
+  `descripcion` longblob NOT NULL,
   `porcentaje_asistencia` decimal(5,1) DEFAULT NULL,
   `registrado_en` datetime(6) NOT NULL,
   `id_estudiante` bigint NOT NULL,
@@ -602,7 +603,7 @@ CREATE TABLE `retencion_eliminacion` (
 CREATE TABLE `retroalimentacion_ia` (
   `id_retro` bigint NOT NULL AUTO_INCREMENT,
   `motivo` varchar(12) NOT NULL,
-  `comentario` longtext NOT NULL,
+  `comentario` longblob NOT NULL,
   `fecha_hora` datetime(6) NOT NULL,
   `id_contenido` bigint NOT NULL,
   `id_profesional` bigint NOT NULL,
@@ -717,7 +718,9 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- ---------------------------------------------------------------------------------------------------------------------
 -- Permisos mínimos del usuario de la aplicación (equivale a `python manage.py permisos_bd --aplicar`).
--- Ejecutar como bienestar_migra (tiene GRANT SELECT, INSERT, UPDATE, DELETE ON `bienestar`.`actividad_plan` TO 'bienestar_app'@'%';
+-- Ejecutar como bienestar_migra, que tiene GRANT OPTION sobre la base `bienestar`.
+-- ---------------------------------------------------------------------------------------------------------------------
+GRANT SELECT, INSERT, UPDATE, DELETE ON `bienestar`.`actividad_plan` TO 'bienestar_app'@'%';
 GRANT SELECT, INSERT, UPDATE, DELETE ON `bienestar`.`alerta_riesgo` TO 'bienestar_app'@'%';
 GRANT SELECT, INSERT, UPDATE, DELETE ON `bienestar`.`anotacion` TO 'bienestar_app'@'%';
 GRANT SELECT, INSERT, UPDATE, DELETE ON `bienestar`.`apoderado` TO 'bienestar_app'@'%';
@@ -768,3 +771,13 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON `bienestar`.`sesion_seguimiento` TO 'bie
 GRANT SELECT, INSERT, UPDATE, DELETE ON `bienestar`.`solicitud_arco` TO 'bienestar_app'@'%';
 GRANT SELECT, INSERT, UPDATE, DELETE ON `bienestar`.`usuario` TO 'bienestar_app'@'%';
 GRANT SELECT, INSERT, UPDATE, DELETE ON `bienestar`.`usuario_rol` TO 'bienestar_app'@'%';
+
+-- Caché compartida entre los trabajadores de Gunicorn (antirrepetición del segundo factor y bloqueos por intentos).
+-- La crea la migración core.0002_cache_compartida (createcachetable); no es una tabla del modelo de datos.
+CREATE TABLE `cache_compartida` (
+  `cache_key` varchar(255) NOT NULL,
+  `value` longtext NOT NULL,
+  `expires` datetime(6) NOT NULL,
+  PRIMARY KEY (`cache_key`),
+  KEY `cache_compartida_expires` (`expires`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
