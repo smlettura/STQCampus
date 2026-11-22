@@ -62,7 +62,8 @@
         <span class="insignia {{ inf.estado|color_estado }}">{{ inf.get_estado_display }}</span>
 </p>
       {% empty %}<p class="vacio">Sin informes.</p>{% endfor %}
-      {% if not caso.cerrado %}<a class="boton secundario chico" href="{% url 'evaluacion:informe_nuevo' caso.pk %}">Nuevo informe</a>{% endif %}
+      {% if not caso.cerrado %}<a class="boton secundario chico" href="{% url 'evaluacion:informe_nuevo' caso.pk %}">Nuevo informe</a>
+      <a class="boton secundario chico" href="{% url 'evaluacion:informe_nuevo' caso.pk %}?tipo=preliminar_fudei">Preparar versión preliminar FUDEI</a>{% endif %}
     </div>
     {% endif %}
 
