@@ -197,3 +197,22 @@ class PanelArcoTest(PruebaBase):
             self.assertEqual(self.cliente(u).get(reverse("cumplimiento:arco_detalle", args=[s.pk])).status_code, 403)
             self.assertEqual(self.cliente(u).post(reverse("cumplimiento:arco_bloquear", args=[s.pk]),
                                                   {"motivo": "x"}).status_code, 403)
+
+
+class PlazosArcoTest(PruebaBase):
+    """Ley 21.719: 30 días corridos; 2 días hábiles si se pide el bloqueo. SLA-07: meta interna de 10 días hábiles."""
+
+    def nueva(self, derecho, fecha):
+        from apps.estudiantes.models import Apoderado
+        apo = self.estudiante.vinculos_apoderado.first().apoderado
+        return SolicitudARCO.objects.create(estudiante=self.estudiante, apoderado=apo, tipo_derecho=derecho,
+                                            fecha_recepcion=fecha, responsable=self.psicologa)
+
+    def test_plazos_legales_y_meta(self):
+        viernes = datetime.date(2026, 11, 20)
+        acceso = self.nueva("acceso", viernes)
+        self.assertEqual(acceso.fecha_limite, datetime.date(2026, 12, 20))         # 30 días corridos
+        self.assertEqual(acceso.meta_sla, datetime.date(2026, 12, 4))              # 10 días hábiles
+        bloqueo = self.nueva("bloqueo", viernes)
+        self.assertEqual(bloqueo.fecha_limite, datetime.date(2026, 11, 24))        # 2 días hábiles: lunes y martes
+        self.assertEqual(bloqueo.meta_sla, bloqueo.fecha_limite)                   # la meta nunca pasa el plazo legal
