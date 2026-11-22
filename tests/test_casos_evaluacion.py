@@ -202,3 +202,37 @@ class EvaluacionTest(PruebaBase):
         self.assertEqual(r.status_code, 302)
         informe.refresh_from_db()
         self.assertIsNone(informe.fecha_entrega)
+
+
+class PreliminarFudeiTest(PruebaBase):
+    """RF-06: la versión preliminar del FUDEI parte de los datos ya registrados y no se valida con marcas pendientes."""
+
+    def setUp(self):
+        self.caso = Caso.objects.create(estudiante=self.estudiante, tipo_proceso="pie_nee", responsable=self.pie,
+                                        fecha_apertura=timezone.localdate() - datetime.timedelta(days=30))
+
+    def test_borrador_con_datos_registrados(self):
+        ev = EvaluacionDiagnostica.objects.create(caso=self.caso, tipo_nee="Trastorno específico del lenguaje",
+                                                  fecha_evaluacion=timezone.localdate())
+        ParticipacionEvaluacion.objects.create(evaluacion=ev, usuario=self.pie, rol_profesional="Coordinadora PIE",
+                                               aporte="Aplicó pruebas pedagógicas.")
+        PlanApoyo.objects.create(estudiante=self.estudiante, tipo="paci", fecha_inicio=timezone.localdate(),
+                                 adecuaciones="Instrucciones breves y apoyo visual en clases.")
+        c = self.cliente(self.pie)
+        r = c.get(reverse("evaluacion:informe_nuevo", args=[self.caso.pk]), {"tipo": "preliminar_fudei"})
+        texto = r.context["form"].initial["contenido"]
+        for esperado in ("VERSIÓN PRELIMINAR DEL FUDEI", "Martina", "Trastorno específico del lenguaje",
+                         "Coordinadora PIE", "Aplicó pruebas pedagógicas.", "PACI", "apoyo visual",
+                         "[PENDIENTE: síntesis del diagnóstico integral]"):
+            self.assertIn(esperado, texto)
+        c.post(reverse("evaluacion:informe_nuevo", args=[self.caso.pk]), {"tipo": "preliminar_fudei", "contenido": texto})
+        informe = Informe.objects.get(caso=self.caso)
+        c.post(reverse("evaluacion:informe_validar", args=[informe.pk]))
+        informe.refresh_from_db()
+        self.assertEqual(informe.estado, "borrador")        # quedan marcas [PENDIENTE]: no se valida
+
+    def test_modo_privado_desactiva_al_preparar(self):
+        c = self.cliente(self.pie)
+        c.post(reverse("cuentas:privacidad_ocultar"))
+        r = c.get(reverse("evaluacion:informe_nuevo", args=[self.caso.pk]), {"tipo": "preliminar_fudei"})
+        self.assertContains(r, "Modo privado desactivado")

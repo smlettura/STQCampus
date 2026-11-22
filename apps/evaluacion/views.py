@@ -174,9 +174,14 @@ def _informe(request, pk):
 
 
 @permiso_requerido("informe.gestionar")
+@datos_visibles(cuando=lambda request, *a, **k: request.GET.get("tipo") == "preliminar_fudei")
 def informe_nuevo(request, caso_pk):
     caso = _caso(request, caso_pk)
-    form = InformeForm(request.POST or None, caso=caso)
+    inicial = None
+    if request.method == "GET" and request.GET.get("tipo") == "preliminar_fudei":
+        from .servicios import borrador_preliminar_fudei
+        inicial = {"tipo": "preliminar_fudei", "contenido": borrador_preliminar_fudei(caso)}
+    form = InformeForm(request.POST or None, caso=caso, initial=inicial)
     if request.method == "POST" and form.is_valid():
         informe = form.save()
         registrar(request.user, "creacion", "informe", informe.pk)
