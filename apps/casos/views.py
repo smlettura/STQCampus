@@ -9,6 +9,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from apps.core.privacidad import datos_visibles
+from apps.core.privacidad import mostrar as _mostrar
 from apps.auditoria.servicios import registrar
 from apps.core.avisos import avisar_al_confirmar
 from apps.core.validadores import TIPOS_MIME
@@ -180,7 +182,7 @@ def documento_subir(request, pk):
         messages.success(request, "Documento adjuntado y cifrado.")
         return redirect("casos:detalle", caso.pk)
     return render(request, "comun/formulario.html", {
-        "form": form, "titulo": "Adjuntar documento — %s" % caso.estudiante, "multipart": True,
+        "form": form, "titulo": "Adjuntar documento — %s" % pv(caso.estudiante), "multipart": True,
         "volver_url": reverse("casos:detalle", args=[caso.pk]), "boton": "Adjuntar"})
 
 
@@ -217,7 +219,7 @@ def cerrar(request, pk):
         messages.success(request, "Caso cerrado. Se conservará hasta el %s (15 años)." % caso.fecha_fin_retencion.strftime("%d-%m-%Y"))
         return redirect("casos:detalle", caso.pk)
     return render(request, "comun/formulario.html", {
-        "form": form, "titulo": "Cerrar caso — %s" % caso.estudiante, "volver_url": reverse("casos:detalle", args=[caso.pk]),
+        "form": form, "titulo": "Cerrar caso — %s" % pv(caso.estudiante), "volver_url": reverse("casos:detalle", args=[caso.pk]),
         "boton": "Cerrar caso", "advertencia": "Un caso cerrado no admite nuevas sesiones ni hitos."})
 
 
@@ -254,6 +256,7 @@ def _casos_para_atencion(usuario, estudiante):
 
 
 @permiso_requerido("caso.gestionar")
+@datos_visibles(cuando=lambda r, *a, **k: bool(r.GET.get("borrador") or r.POST.get("borrador")))
 def registrar_atencion(request):
     u = request.user
     borrador = None
@@ -273,7 +276,7 @@ def registrar_atencion(request):
         return render(request, "casos/registrar_atencion.html", {"q": q, "resultados": resultados, "mis_casos": mis_casos,
                                                                  "hoy": timezone.localdate()})
     if not estudiante.activo and borrador is None:
-        messages.error(request, "%s no está activo: no se pueden registrar atenciones nuevas." % estudiante)
+        messages.error(request, "%s no está activo: no se pueden registrar atenciones nuevas." % pv(estudiante))
         return redirect("estudiantes:detalle", estudiante.pk)
 
     casos = _casos_para_atencion(u, estudiante)
@@ -337,6 +340,7 @@ def descartar_borrador(request, pk):
 @permiso_requerido("caso.ver_equipo", "caso.ver_pie")
 def sugerencias(request):
     """Lista desplegable del filtro de «Fichas de estudiantes»: casos visibles del estudiante buscado."""
+    from apps.core.privacidad import mostrar
     from django.http import JsonResponse
     q = " ".join(request.GET.get("q", "").split())[:60]
     if len(q) < 2:
@@ -344,6 +348,11 @@ def sugerencias(request):
     qs = (casos_visibles(request.user).filter(estudiante__in=Estudiante.objects.buscar(q))
           .select_related("estudiante", "estudiante__curso").order_by("estado", "-fecha_apertura"))
     return JsonResponse({"resultados": [
-        {"id": c.pk, "texto": "%s %s" % (c.estudiante.nombres, c.estudiante.apellidos),
+        {"id": c.pk, "texto": mostrar("%s %s" % (c.estudiante.nombres, c.estudiante.apellidos), "nombre", request),
          "detalle": "%s · %s · %s" % (c.get_tipo_proceso_display(), c.get_estado_display(), c.estudiante.curso.nombre),
          "url": reverse("casos:detalle", args=[c.pk])} for c in qs[:8]]})
+
+
+def pv(objeto):
+    """Nombre para títulos y mensajes: iniciales si la sesión está en modo privado."""
+    return _mostrar(str(objeto), "nombre")

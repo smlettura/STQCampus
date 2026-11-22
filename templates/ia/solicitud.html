@@ -4,7 +4,7 @@
 {% block cabeza_extra %}{% if en_espera %}<meta http-equiv="refresh" content="15">{% endif %}{% endblock %}
 {% block contenido %}
 <div class="titulo-pagina"><h1>Borrador del copiloto</h1>
-  <span class="contexto">{{ estudiante.nombres }} {{ estudiante.apellidos }} · {{ sol.fecha_creacion|date:"d/m/Y H:i" }} ·
+  <span class="contexto">{{ estudiante.nombres|priv:"nombre" }} {{ estudiante.apellidos|priv:"nombre" }} · {{ sol.fecha_creacion|date:"d/m/Y H:i" }} ·
     <span class="insignia {% if sol.estado == 'lista' %}verde{% elif sol.estado in 'error expirada' %}rojo{% else %}ambar{% endif %}">{{ sol.get_estado_display|upper }}</span></span></div>
 
 {% if sol.estado == "pendiente" or sol.estado == "en_proceso" %}

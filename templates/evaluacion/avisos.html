@@ -8,7 +8,7 @@
   <thead><tr><th>Estudiante</th><th>Tipo de NEE</th><th>Fecha de reevaluación</th><th>Aviso enviado</th><th>Estado</th></tr></thead><tbody>
   {% now "Y-m-d" as hoy %}
   {% for a in avisos %}<tr>
-    <td data-rotulo="Estudiante"><a href="{% url 'evaluacion:detalle' a.evaluacion_id %}">{{ a.evaluacion.caso.estudiante }}</a></td>
+    <td data-rotulo="Estudiante"><a href="{% url 'evaluacion:detalle' a.evaluacion_id %}">{{ a.evaluacion.caso.estudiante|priv:"nombre" }}</a></td>
     <td data-rotulo="NEE">{{ a.evaluacion.tipo_nee }}</td>
     <td data-rotulo="Reevaluación">{{ a.fecha_programada|date:"d-m-Y" }}{% if a.fecha_programada|date:"Y-m-d" < hoy %} <span class="insignia rojo">vencida</span>{% endif %}</td>
     <td data-rotulo="Enviado" class="nowrap">{{ a.fecha_envio|date:"d-m-Y H:i"|default:"—" }}</td>

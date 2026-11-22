@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
+from apps.core.privacidad import datos_visibles
 from apps.auditoria.servicios import registrar
 from apps.casos.acceso import casos_visibles
 from apps.casos.models import SesionSeguimiento
@@ -45,13 +46,14 @@ def generar_informe(request):
         sesiones = _sesiones_disponibles(u, casos, estudiante, periodo)
         caso_abierto = casos.filter(estudiante=estudiante).exclude(estado="cerrado").first()
         registrar(u, "consulta", "estudiante", estudiante.pk, detalle="generar informe (IA): listado de atenciones")
-    from apps.cumplimiento.models import Consentimiento
+    from apps.cumplimiento.models import BloqueoTratamiento, Consentimiento
     return render(request, "ia/generar_informe.html", {
         "estudiantes": estudiantes, "estudiante": estudiante, "periodo": periodo, "periodos": servicios.PERIODOS,
         "sesiones": sesiones, "caso_abierto": caso_abierto, "tipos": servicios.TIPOS_INFORME,
         "secciones": servicios.SECCIONES, "secciones_defecto": servicios.SECCIONES_POR_DEFECTO,
         "disponible": servicios.DISPONIBLE, "conectado": servicios.agente_conectado(), "hoy": timezone.localdate(),
         "consentimiento": estudiante is not None and Consentimiento.vigente_para(estudiante, "uso_ia"),
+        "bloqueado": estudiante is not None and BloqueoTratamiento.activo_para(estudiante),
         "recientes": SolicitudIA.objects.filter(solicitante=u).select_related("caso__estudiante")[:5]})
 
 
@@ -90,6 +92,7 @@ def _solicitud(request, pk):
 
 @require_GET
 @permiso_requerido("ia.usar")
+@datos_visibles
 def solicitud(request, pk):
     sol = _solicitud(request, pk)
     servicios.mantener_cola()

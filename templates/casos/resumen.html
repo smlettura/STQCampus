@@ -50,24 +50,24 @@
 <div class="rejilla" style="margin-top:12px">
   <div class="tarjeta">
     <div class="cabecera-tarjeta"><h2>Mis casos activos</h2><a {% if "caso.ver_equipo" in permisos or "caso.ver_pie" in permisos %}href="{% url 'casos:lista' %}?mios=1"{% endif %}>Ver todos</a></div>
-    <ul class="lista-simple">{% for c in mis_casos %}<li><a href="{% url 'casos:detalle' c.pk %}">{{ c.estudiante }} <small class="ayuda" style="margin:0">{{ c.estudiante.curso.nombre }} · {{ c.get_tipo_proceso_display }}</small>{% icono "flecha" 16 %}</a></li>
+    <ul class="lista-simple">{% for c in mis_casos %}<li><a href="{% url 'casos:detalle' c.pk %}">{{ c.estudiante|priv:"nombre" }} <small class="ayuda" style="margin:0">{{ c.estudiante.curso.nombre }} · {{ c.get_tipo_proceso_display }}</small>{% icono "flecha" 16 %}</a></li>
       {% empty %}<li class="vacio">No tiene casos activos a su cargo.</li>{% endfor %}</ul>
   </div>
   <div class="tarjeta">
     <div class="cabecera-tarjeta"><h2>Derivaciones por revisar</h2><a href="{% url 'casos:derivaciones' %}">Ver todas</a></div>
-    <ul class="lista-simple">{% for d in derivaciones_pendientes %}<li><span class="fecha">{{ d.fecha_hora|date:"d/m" }}</span><a href="{% url 'casos:abrir' d.pk %}">{{ d.estudiante }} <small class="ayuda" style="margin:0">derivó {{ d.derivante }}</small>{% icono "flecha" 16 %}</a></li>
+    <ul class="lista-simple">{% for d in derivaciones_pendientes %}<li><span class="fecha">{{ d.fecha_hora|date:"d/m" }}</span><a href="{% url 'casos:abrir' d.pk %}">{{ d.estudiante|priv:"nombre" }} <small class="ayuda" style="margin:0">derivó {{ d.derivante }}</small>{% icono "flecha" 16 %}</a></li>
       {% empty %}<li class="vacio">No hay derivaciones pendientes.</li>{% endfor %}</ul>
   </div>
   {% if mis_borradores %}
   <div class="tarjeta">
     <h2>Mis borradores de atención</h2>
-    <ul class="lista-simple">{% for s in mis_borradores %}<li><span class="fecha">{{ s.fecha_hora|date:"d/m" }}</span><a href="{% url 'casos:registrar_atencion' %}?borrador={{ s.pk }}">{{ s.caso.estudiante }}{% icono "flecha" 16 %}</a></li>{% endfor %}</ul>
+    <ul class="lista-simple">{% for s in mis_borradores %}<li><span class="fecha">{{ s.fecha_hora|date:"d/m" }}</span><a href="{% url 'casos:registrar_atencion' %}?borrador={{ s.pk }}">{{ s.caso.estudiante|priv:"nombre" }}{% icono "flecha" 16 %}</a></li>{% endfor %}</ul>
   </div>
   {% endif %}
   {% if avisos %}
   <div class="tarjeta">
     <div class="cabecera-tarjeta"><h2>Reevaluaciones PIE</h2><a href="{% url 'evaluacion:avisos' %}">Ver todas</a></div>
-    <ul class="lista-simple">{% for a in avisos %}<li><span class="fecha">{{ a.fecha_programada|date:"d/m/Y" }}</span><a href="{% url 'evaluacion:detalle' a.evaluacion_id %}">{{ a.evaluacion.caso.estudiante }}{% icono "flecha" 16 %}</a></li>{% endfor %}</ul>
+    <ul class="lista-simple">{% for a in avisos %}<li><span class="fecha">{{ a.fecha_programada|date:"d/m/Y" }}</span><a href="{% url 'evaluacion:detalle' a.evaluacion_id %}">{{ a.evaluacion.caso.estudiante|priv:"nombre" }}{% icono "flecha" 16 %}</a></li>{% endfor %}</ul>
   </div>
   {% endif %}
 </div>

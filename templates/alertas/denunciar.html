@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block titulo %}Registrar denuncia{% endblock %}
 {% block contenido %}
 <div class="columna-form">
 <h1>Registrar denuncia — alerta N° {{ alerta.pk }}</h1>
-<p class="sub">{{ alerta.get_tipo_situacion_display }} · {{ alerta.estudiante }} · conocimiento {{ alerta.fecha_hora_conocimiento|date:"d-m-Y H:i" }}</p>
+<p class="sub">{{ alerta.get_tipo_situacion_display }} · {{ alerta.estudiante|priv:"nombre" }} · conocimiento {{ alerta.fecha_hora_conocimiento|date:"d-m-Y H:i" }}</p>
 {% if alerta.plazo_denuncia < ahora %}<div class="aviso error">El plazo de 24 horas venció el {{ alerta.plazo_denuncia|date:"d-m-Y H:i" }}. Registre igualmente la denuncia y confírmelo abajo.</div>
 {% else %}<div class="aviso advertencia">Plazo legal: hasta el {{ alerta.plazo_denuncia|date:"d-m-Y H:i" }}.</div>{% endif %}
 <div class="tarjeta formulario">

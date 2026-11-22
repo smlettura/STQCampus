@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block titulo %}Derivaciones{% endblock %}
 {% block contenido %}
 <div class="encabezado">
@@ -8,7 +9,7 @@
 <div class="tarjeta tabla-scroll">
   <h2>Pendientes de revisión</h2>
   <table class="tabla"><thead><tr><th>Estudiante</th><th>Curso</th><th>Derivó</th><th>Fecha</th><th></th></tr></thead><tbody>
-  {% for d in pendientes %}<tr><td data-rotulo="Estudiante">{{ d.estudiante }}</td><td data-rotulo="Curso">{{ d.estudiante.curso }}</td>
+  {% for d in pendientes %}<tr><td data-rotulo="Estudiante">{{ d.estudiante|priv:"nombre" }}</td><td data-rotulo="Curso">{{ d.estudiante.curso }}</td>
     <td data-rotulo="Derivó">{{ d.derivante }}</td><td data-rotulo="Fecha" class="nowrap">{{ d.fecha_hora|date:"d-m-Y H:i" }}</td>
     <td><a class="boton chico" href="{% url 'casos:abrir' d.pk %}">Revisar y abrir caso</a></td></tr>
   {% empty %}<tr><td colspan="5" class="vacio">No hay derivaciones pendientes.</td></tr>{% endfor %}
@@ -17,7 +18,7 @@
 <div class="tarjeta tabla-scroll">
   <h2>Procesadas recientemente</h2>
   <table class="tabla"><thead><tr><th>Estudiante</th><th>Derivó</th><th>Fecha</th><th>Caso</th></tr></thead><tbody>
-  {% for d in procesadas %}<tr><td data-rotulo="Estudiante">{{ d.estudiante }}</td><td data-rotulo="Derivó">{{ d.derivante }}</td>
+  {% for d in procesadas %}<tr><td data-rotulo="Estudiante">{{ d.estudiante|priv:"nombre" }}</td><td data-rotulo="Derivó">{{ d.derivante }}</td>
     <td data-rotulo="Fecha">{{ d.fecha_hora|date:"d-m-Y" }}</td><td data-rotulo="Caso"><a href="{% url 'casos:detalle' d.caso_id %}">Ver caso</a></td></tr>
   {% empty %}<tr><td colspan="4" class="vacio">Sin registros.</td></tr>{% endfor %}
   </tbody></table>

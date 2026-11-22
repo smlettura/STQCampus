@@ -20,8 +20,8 @@
     <tbody>
     {% for e in estudiantes %}<tr>
       <td class="num-fila">{{ forloop.counter|stringformat:"02d" }}</td>
-      <td data-rotulo="Estudiante">{{ e.nombre_lista }}{% if e.nombre_social %}<span class="sub-celda">Nombre social: {{ e.nombre_social }}</span>{% endif %}</td>
-      <td data-rotulo="RUT" class="nowrap">{{ e.rut|rut }}</td>
+      <td data-rotulo="Estudiante">{{ e.nombre_lista|priv:"nombre" }}{% if e.nombre_social %}<span class="sub-celda">Nombre social: {{ e.nombre_social|priv:"nombre" }}</span>{% endif %}</td>
+      <td data-rotulo="RUT" class="nowrap">{{ e.rut|rut|priv:"rut" }}</td>
       <td data-rotulo="Programa">{% if e.en_pie %}<span class="insignia">PIE</span>{% endif %}{% if e.prioritario %} <span class="insignia ambar">PRIORITARIO</span>{% endif %}{% if not e.en_pie and not e.prioritario %}—{% endif %}</td>
       <td data-rotulo="Estado"><span class="estado {{ e.estado|color_estado }}">{{ e.get_estado_display }}</span></td>
       <td class="col-acciones">{% if "estudiante.ver_todos" in permisos %}<a class="boton contorno" href="{% url 'estudiantes:detalle' e.pk %}">Ver ficha</a>{% endif %}</td>

@@ -47,6 +47,9 @@ class Consentimiento(models.Model):
 
     @classmethod
     def vigente_para(cls, estudiante, alcance):
+        """Un tratamiento bloqueado por una solicitud ARCO+ (derecho de bloqueo) suspende todos los alcances."""
+        if BloqueoTratamiento.activo_para(estudiante):
+            return False
         hoy = timezone.localdate()
         return cls.objects.filter(estudiante=estudiante, alcance=alcance, fecha_otorgamiento__lte=hoy).filter(
             Q(fecha_revocacion__isnull=True) | Q(fecha_revocacion__gt=hoy)).exists()
@@ -84,6 +87,10 @@ class SolicitudARCO(models.Model):
     fecha_recepcion = models.DateField("fecha de recepción", default=timezone.localdate, validators=[validar_no_futuro])
     fecha_limite = models.DateField("fecha límite de respuesta", editable=False)
     estado = models.CharField("estado", max_length=12, choices=ESTADOS, default="recibida")
+    detalle = models.TextField("qué solicita el titular", blank=True,
+                               help_text="Por ejemplo: qué dato corregir, a qué tratamiento se opone o qué desea suprimir.")
+    respuesta = models.TextField("respuesta al titular", blank=True,
+                                 help_text="Texto que recibirá el apoderado. Si se rechaza, indique el fundamento legal.")
     fecha_respuesta = models.DateField("fecha de respuesta", null=True, blank=True, validators=[validar_no_futuro])
     responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="solicitudes_arco",
                                     db_column="id_responsable")
@@ -121,12 +128,74 @@ class SolicitudARCO(models.Model):
             errores["apoderado"] = "Solo un apoderado vinculado al estudiante puede ejercer estos derechos."
         if self.estado in ("respondida", "rechazada") and not self.fecha_respuesta:
             errores["fecha_respuesta"] = "Indique la fecha de respuesta."
+        if self.estado in ("respondida", "rechazada") and not (self.respuesta or "").strip():
+            errores["respuesta"] = "Escriba la respuesta que recibirá el titular."
         if self.fecha_respuesta and self.fecha_recepcion and self.fecha_respuesta < self.fecha_recepcion:
             errores["fecha_respuesta"] = "La respuesta no puede ser anterior a la recepción."
         if self.responsable_id and not self.responsable.tiene_permiso("arco.gestionar"):
             errores["responsable"] = "El responsable debe tener permiso para atender solicitudes ARCO+."
         if errores:
             raise ValidationError(errores)
+
+
+class AccionARCO(models.Model):
+    """Historial de lo que se hizo para atender una solicitud ARCO+. El detalle no guarda datos personales."""
+    TIPOS = [("registro", "Registro de la solicitud"), ("analisis", "Inicio del análisis"),
+             ("exportacion", "Exportación del expediente"), ("informe_acceso", "Informe de acceso generado"),
+             ("rectificacion", "Rectificación aplicada"), ("supresion", "Supresión propuesta a la Dirección"),
+             ("oposicion", "Oposición: consentimiento revocado"), ("bloqueo", "Tratamiento bloqueado"),
+             ("desbloqueo", "Bloqueo levantado"), ("respuesta", "Respuesta registrada")]
+
+    id = models.BigAutoField(primary_key=True, db_column="id_accion_arco")
+    solicitud = models.ForeignKey(SolicitudARCO, on_delete=models.CASCADE, related_name="acciones", db_column="id_solicitud")
+    fecha_hora = models.DateTimeField("fecha y hora", default=timezone.now)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="acciones_arco",
+                                db_column="id_usuario")
+    tipo = models.CharField("acción", max_length=16, choices=TIPOS)
+    detalle = models.CharField("detalle", max_length=255, blank=True)
+
+    class Meta:
+        db_table = "accion_arco"
+        ordering = ["fecha_hora", "id"]
+        verbose_name = "acción ARCO+"
+        verbose_name_plural = "acciones ARCO+"
+
+    def __str__(self):
+        return "%s (%s)" % (self.get_tipo_display(), self.fecha_hora)
+
+
+class BloqueoTratamiento(models.Model):
+    """Derecho de bloqueo: suspende temporalmente el tratamiento (copiloto de IA, nuevas evaluaciones con consentimiento)
+    mientras se resuelve una solicitud. Los datos se conservan."""
+    id = models.BigAutoField(primary_key=True, db_column="id_bloqueo")
+    estudiante = models.ForeignKey("estudiantes.Estudiante", on_delete=models.CASCADE, related_name="bloqueos",
+                                   db_column="id_estudiante")
+    solicitud = models.ForeignKey(SolicitudARCO, on_delete=models.SET_NULL, null=True, blank=True, related_name="bloqueos",
+                                  db_column="id_solicitud")
+    motivo = models.CharField("motivo", max_length=255)
+    fecha_inicio = models.DateTimeField("inicio", default=timezone.now)
+    fecha_termino = models.DateTimeField("término", null=True, blank=True)
+    creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="bloqueos_creados",
+                                   db_column="id_creado_por")
+
+    class Meta:
+        db_table = "bloqueo_tratamiento"
+        ordering = ["-fecha_inicio"]
+        verbose_name = "bloqueo de tratamiento"
+        verbose_name_plural = "bloqueos de tratamiento"
+
+    def __str__(self):
+        return "Bloqueo de %s" % self.estudiante
+
+    @property
+    def vigente(self):
+        return self.fecha_termino is None
+
+    @classmethod
+    def activo_para(cls, estudiante):
+        if estudiante is None or not getattr(estudiante, "pk", None):
+            return False
+        return cls.objects.filter(estudiante=estudiante, fecha_termino__isnull=True).exists()
 
 
 class RetencionEliminacion(models.Model):
@@ -144,6 +213,11 @@ class RetencionEliminacion(models.Model):
                                        related_name="retenciones_autorizadas", db_column="id_autorizada_por")
     fecha_autorizacion = models.DateTimeField("fecha de autorización", null=True, blank=True)
     fecha_ejecucion = models.DateTimeField("fecha de ejecución", null=True, blank=True)
+    origen = models.CharField("origen", max_length=10, choices=[("retencion", "Plazo de retención cumplido"),
+                                                               ("arco", "Solicitud de supresión ARCO+")],
+                              default="retencion")
+    solicitud_arco = models.ForeignKey(SolicitudARCO, on_delete=models.SET_NULL, null=True, blank=True,
+                                       related_name="supresiones", db_column="id_solicitud_arco")
 
     class Meta:
         db_table = "retencion_eliminacion"
@@ -168,7 +242,7 @@ class RetencionEliminacion(models.Model):
                 errores["estado"] = "La eliminación requiere la autorización registrada de la Directora."
             elif not self.autorizada_por.tiene_rol("directora"):
                 errores["autorizada_por"] = "Solo la Directora puede autorizar la eliminación."
-            if self.fecha_vencimiento and self.fecha_vencimiento > timezone.localdate():
+            if self.origen == "retencion" and self.fecha_vencimiento and self.fecha_vencimiento > timezone.localdate():
                 errores["fecha_vencimiento"] = "El plazo de retención aún no se cumple."
         if errores:
             raise ValidationError(errores)

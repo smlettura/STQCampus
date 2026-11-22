@@ -5,6 +5,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from apps.core.privacidad import datos_visibles
+from apps.core.privacidad import mostrar as _mostrar
 from apps.auditoria.servicios import registrar
 from apps.casos.acceso import casos_visibles
 from apps.casos.models import Caso
@@ -45,7 +47,7 @@ def evaluacion_nueva(request, caso_pk):
         messages.success(request, "Evaluación registrada. Agregue ahora a los profesionales participantes.")
         return redirect("evaluacion:detalle", ev.pk)
     return render(request, "comun/formulario.html", {
-        "form": form, "titulo": "Evaluación diagnóstica integral — %s" % caso.estudiante,
+        "form": form, "titulo": "Evaluación diagnóstica integral — %s" % pv(caso.estudiante),
         "volver_url": reverse("casos:detalle", args=[caso.pk]),
         "ayuda": "Decreto 170: la evaluación es integral e interdisciplinaria. Para NEE transitorias la reevaluación "
                  "se programa a 2 años si deja la fecha vacía."})
@@ -61,6 +63,7 @@ def evaluacion_detalle(request, pk):
 
 
 @permiso_requerido("evaluacion.gestionar")
+@datos_visibles
 def evaluacion_editar(request, pk):
     ev = _evaluacion(request, pk)
     if ev.estado == "cerrada":
@@ -119,7 +122,7 @@ def plan_nuevo(request, estudiante_pk):
         messages.success(request, "Plan de apoyo registrado.")
         return redirect("estudiantes:detalle", estudiante.pk)
     return render(request, "comun/formulario.html", {
-        "form": form, "titulo": "Plan de apoyo — %s" % estudiante,
+        "form": form, "titulo": "Plan de apoyo — %s" % pv(estudiante),
         "volver_url": reverse("estudiantes:detalle", args=[estudiante.pk]),
         "ayuda": "Las adecuaciones las verá el profesor jefe; el detalle se guarda cifrado."})
 
@@ -132,6 +135,7 @@ def _plan(request, pk, **filtros):
 
 
 @permiso_requerido("plan.gestionar")
+@datos_visibles
 def plan_editar(request, pk):
     plan = _plan(request, pk)
     if plan.estado != "vigente":
@@ -179,7 +183,7 @@ def informe_nuevo(request, caso_pk):
         messages.success(request, "Informe guardado como borrador.")
         return redirect("evaluacion:informe", informe.pk)
     return render(request, "comun/formulario.html", {
-        "form": form, "titulo": "Nuevo informe — %s" % caso.estudiante, "volver_url": reverse("casos:detalle", args=[caso.pk]),
+        "form": form, "titulo": "Nuevo informe — %s" % pv(caso.estudiante), "volver_url": reverse("casos:detalle", args=[caso.pk]),
         "ayuda": "También puede partir desde un borrador del copiloto de IA validado (menú del caso)."})
 
 
@@ -191,6 +195,7 @@ def informe_detalle(request, pk):
 
 
 @permiso_requerido("informe.gestionar")
+@datos_visibles
 def informe_editar(request, pk):
     informe = _informe(request, pk)
     if informe.estado != "borrador":
@@ -262,3 +267,8 @@ def informe_descartar(request, pk):
 def avisos(request):
     lista = AvisoReevaluacion.objects.filter(destinatario=request.user).select_related("evaluacion__caso__estudiante")
     return render(request, "evaluacion/avisos.html", {"avisos": lista})
+
+
+def pv(objeto):
+    """Nombre para títulos y mensajes: iniciales si la sesión está en modo privado."""
+    return _mostrar(str(objeto), "nombre")

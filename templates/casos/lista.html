@@ -27,7 +27,7 @@
     <tbody>
     {% for c in pagina %}
     <tr>
-      <td data-rotulo="Estudiante"><strong>{{ c.estudiante }}</strong><span class="sub-celda">{{ c.estudiante.rut|rut }}</span></td>
+      <td data-rotulo="Estudiante"><strong>{{ c.estudiante|priv:"nombre" }}</strong><span class="sub-celda">{{ c.estudiante.rut|rut|priv:"rut" }}</span></td>
       <td data-rotulo="Curso">{{ c.estudiante.curso.nombre }}</td>
       <td data-rotulo="Tipo">{{ c.get_tipo_proceso_display }}</td>
       <td data-rotulo="Responsable">{{ c.responsable }}</td>

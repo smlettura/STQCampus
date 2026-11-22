@@ -18,10 +18,68 @@ document.addEventListener("DOMContentLoaded", function () {
     document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { cerrar(); } });
   }
 
-  // Formularios que piden confirmación antes de enviarse (acciones irreversibles).
+  // Avisos flotantes: los de éxito e información se cierran solos (pausa al pasar el mouse); los errores quedan.
+  var cerrarAviso = function (t) {
+    if (!t || t.classList.contains("saliendo")) { return; }
+    t.classList.add("saliendo");
+    setTimeout(function () {
+      var cont = t.parentNode; t.remove();
+      if (cont && !cont.children.length) { cont.remove(); }
+    }, 230);
+  };
+  document.querySelectorAll(".toast").forEach(function (t, i) {
+    t.querySelector(".toast-cerrar").addEventListener("click", function () { cerrarAviso(t); });
+    if (t.classList.contains("error") || t.classList.contains("warning")) { return; }
+    var restante = 6000 + i * 800, inicio, temporizador;
+    t.style.setProperty("--duracion", restante + "ms");
+    t.classList.add("con-tiempo");
+    var correr = function () { inicio = Date.now(); temporizador = setTimeout(function () { cerrarAviso(t); }, restante); };
+    t.addEventListener("mouseenter", function () { clearTimeout(temporizador); restante -= Date.now() - inicio; });
+    t.addEventListener("mouseleave", correr);
+    correr();
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") { document.querySelectorAll(".toast").forEach(cerrarAviso); }
+  });
+
+  // Confirmación de acciones irreversibles con un diálogo propio (sin el cuadro del navegador).
+  var dialogo = null;
+  var confirmar = function (mensaje, peligro, alAceptar) {
+    if (!window.HTMLDialogElement) { if (window.confirm(mensaje)) { alAceptar(); } return; }
+    if (!dialogo) {
+      dialogo = document.createElement("dialog");
+      dialogo.className = "confirmacion";
+      dialogo.setAttribute("aria-labelledby", "confirmacion-titulo");
+      dialogo.innerHTML = '<div class="confirmacion-cuerpo"><span class="confirmacion-icono" aria-hidden="true">' +
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>' +
+        '<div><h2 id="confirmacion-titulo">¿Confirmar esta acción?</h2><p class="confirmacion-mensaje"></p></div></div>' +
+        '<div class="confirmacion-pie"><button type="button" class="boton secundario" data-respuesta="no">Cancelar</button>' +
+        '<button type="button" class="boton" data-respuesta="si">Confirmar</button></div>';
+      document.body.appendChild(dialogo);
+      dialogo.addEventListener("click", function (ev) { if (ev.target === dialogo) { dialogo.close("no"); } });
+      dialogo.querySelectorAll("[data-respuesta]").forEach(function (b) {
+        b.addEventListener("click", function () { dialogo.close(b.getAttribute("data-respuesta")); });
+      });
+    }
+    dialogo.querySelector(".confirmacion-mensaje").textContent = mensaje;
+    dialogo.classList.toggle("peligro", !!peligro);
+    var aceptar = dialogo.querySelector('[data-respuesta="si"]');
+    aceptar.className = "boton" + (peligro ? " peligro" : "");
+    dialogo.onclose = function () { if (dialogo.returnValue === "si") { alAceptar(); } };
+    dialogo.returnValue = "";
+    dialogo.showModal();
+    dialogo.querySelector('[data-respuesta="no"]').focus();
+  };
   document.querySelectorAll("form[data-confirmar]").forEach(function (form) {
     form.addEventListener("submit", function (ev) {
-      if (!window.confirm(form.getAttribute("data-confirmar"))) { ev.preventDefault(); }
+      if (form.dataset.confirmado === "1") { form.dataset.confirmado = ""; return; }
+      ev.preventDefault();
+      var boton = ev.submitter;
+      confirmar(form.getAttribute("data-confirmar"), form.hasAttribute("data-peligro"), function () {
+        form.dataset.confirmado = "1";
+        if (form.requestSubmit) { form.requestSubmit(boton || undefined); } else { form.submit(); }
+      });
     });
   });
 

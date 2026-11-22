@@ -16,7 +16,7 @@
         <div class="grupo"><label for="id_estudiante">Estudiante</label>
           <select class="campo" name="estudiante" id="id_estudiante" data-autoenvio>
             <option value="">Seleccionar estudiante</option>
-            {% for x in estudiantes %}<option value="{{ x.pk }}"{% if estudiante and x.pk == estudiante.pk %} selected{% endif %}>{{ x.nombres }} {{ x.apellidos }} · {{ x.curso.nombre }}</option>{% endfor %}
+            {% for x in estudiantes %}<option value="{{ x.pk }}"{% if estudiante and x.pk == estudiante.pk %} selected{% endif %}>{{ x.nombres|priv:"nombre" }} {{ x.apellidos|priv:"nombre" }} · {{ x.curso.nombre }}</option>{% endfor %}
           </select></div>
         <div class="grupo"><label for="id_periodo">Periodo</label>
           <select class="campo" name="periodo" id="id_periodo" data-autoenvio>
@@ -38,7 +38,8 @@
         {% empty %}<p class="vacio">No hay atenciones registradas en el periodo.</p>{% endfor %}
         </div>
       </fieldset>
-      {% if not consentimiento %}<p class="ayuda" style="color:var(--rojo, #b42318)">Sin consentimiento vigente del apoderado para el uso del módulo de IA: el informe debe redactarse de forma manual.</p>{% endif %}
+      {% if bloqueado %}<p class="ayuda" style="color:var(--rojo, #b42318)">El tratamiento de los datos de este estudiante está bloqueado por una solicitud ARCO+: el copiloto no puede usarse mientras dure el bloqueo.</p>
+      {% elif not consentimiento %}<p class="ayuda" style="color:var(--rojo, #b42318)">Sin consentimiento vigente del apoderado para el uso del módulo de IA: el informe debe redactarse de forma manual.</p>{% endif %}
       {% else %}<p class="vacio">Seleccione un estudiante para ver sus atenciones.</p>{% endif %}
     </section>
     <section class="tarjeta" style="margin-top:12px">
@@ -68,7 +69,7 @@
   <div class="borrador-ia">
     <div class="cabeza">{% icono "chispa" 18 %}<h2>Mis solicitudes recientes</h2></div>
     <div class="cuerpo">
-      {% for r in recientes %}<p style="margin:0 0 10px"><a href="{% url 'ia:solicitud' r.pk %}">{{ r.caso.estudiante.nombres }} {{ r.caso.estudiante.apellidos }}</a>
+      {% for r in recientes %}<p style="margin:0 0 10px"><a href="{% url 'ia:solicitud' r.pk %}">{{ r.caso.estudiante.nombres|priv:"nombre" }} {{ r.caso.estudiante.apellidos|priv:"nombre" }}</a>
         · {{ r.fecha_creacion|date:"d/m/Y H:i" }} · <strong>{{ r.get_estado_display }}</strong></p>
       {% empty %}<p class="vacio">Aún no ha pedido borradores al copiloto. Cuando lo haga, el borrador aparecerá aquí para revisarlo, editarlo y validarlo.</p>{% endfor %}
     </div>

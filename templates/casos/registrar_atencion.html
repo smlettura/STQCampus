@@ -16,7 +16,7 @@
       </form>
       {% if resultados is not None %}
       <ul class="resultados-busqueda">
-        {% for r in resultados %}<li><a href="?estudiante={{ r.pk }}"><span><strong>{{ r.nombres }} {{ r.apellidos }}</strong> <small>{{ r.rut|rut }} · {{ r.curso.nombre }}</small></span><span>Seleccionar →</span></a></li>
+        {% for r in resultados %}<li><a href="?estudiante={{ r.pk }}"><span><strong>{{ r.nombres|priv:"nombre" }} {{ r.apellidos|priv:"nombre" }}</strong> <small>{{ r.rut|rut|priv:"rut" }} · {{ r.curso.nombre }}</small></span><span>Seleccionar →</span></a></li>
         {% empty %}<li class="vacio" style="padding:12px 14px">No hay estudiantes activos que coincidan con «{{ q }}».</li>{% endfor %}
       </ul>
       {% endif %}
@@ -37,7 +37,7 @@
     {% if mis_casos %}
     <div class="tarjeta" style="margin-top:12px">
       <h2>Mis casos activos</h2>
-      <ul class="lista-simple">{% for c in mis_casos %}<li><a href="?estudiante={{ c.estudiante_id }}">{{ c.estudiante }} <small class="ayuda" style="margin:0">{{ c.estudiante.curso.nombre }}</small>{% icono "flecha" 16 %}</a></li>{% endfor %}</ul>
+      <ul class="lista-simple">{% for c in mis_casos %}<li><a href="?estudiante={{ c.estudiante_id }}">{{ c.estudiante|priv:"nombre" }} <small class="ayuda" style="margin:0">{{ c.estudiante.curso.nombre }}</small>{% icono "flecha" 16 %}</a></li>{% endfor %}</ul>
     </div>
     {% endif %}
   </aside>
@@ -52,8 +52,8 @@
       <div class="paso"><span class="numero">1</span><div><h2>Estudiante</h2><p>A quién se atendió.</p></div></div>
       <div class="tarjeta-estudiante">
         <span class="avatar" aria-hidden="true">{{ e.iniciales }}</span>
-        <div class="quien-es"><strong>{{ e.nombres }} {{ e.apellidos }}</strong>
-          <span><span class="mono">{{ e.rut|rut }}</span> · {{ e.curso.nombre }}{% if e.nombre_social %} · nombre social: {{ e.nombre_social }}{% endif %}</span></div>
+        <div class="quien-es"><strong>{{ e.nombres|priv:"nombre" }} {{ e.apellidos|priv:"nombre" }}</strong>
+          <span><span class="mono">{{ e.rut|rut|priv:"rut" }}</span> · {{ e.curso.nombre }}{% if e.nombre_social %} · nombre social: {{ e.nombre_social|priv:"nombre" }}{% endif %}</span></div>
         {% if en_pie %}<span class="insignia">PIE</span>{% endif %}
         {% if en_seguimiento %}<span class="insignia gris">EN SEGUIMIENTO</span>{% else %}<span class="insignia verde">SE ABRIRÁ UN CASO</span>{% endif %}
         {% if not borrador %}<a class="boton secundario" href="{% url 'casos:registrar_atencion' %}">Cambiar</a>{% endif %}
@@ -103,7 +103,7 @@
       <button type="submit" class="boton secundario" name="accion" value="borrador">Guardar como borrador</button>
     </div>
     {% if borrador %}
-    <form method="post" action="{% url 'casos:descartar_borrador' borrador.pk %}" data-confirmar="¿Descartar este borrador?" style="margin-top:10px">{% csrf_token %}
+    <form method="post" action="{% url 'casos:descartar_borrador' borrador.pk %}" data-confirmar="¿Descartar este borrador?" data-peligro style="margin-top:10px">{% csrf_token %}
       <button class="boton contorno-rojo" type="submit">Descartar borrador</button></form>
     {% endif %}
     <div class="tarjeta" style="margin-top:12px">

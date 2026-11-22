@@ -19,6 +19,8 @@ def plataforma(request):
         datos["mfa_pendiente"] = True
         return datos
     datos["permisos"] = usuario.codigos_permiso()
+    from . import privacidad
+    datos["modo_privado"] = privacidad.activo(request)
     from apps.alertas.models import Notificacion
 
     from .menu import construir_menu

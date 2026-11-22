@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Informe de acceso{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Informe de acceso a datos personales</h1><p class="sub">Solicitud n.º {{ s.pk }} · derecho de acceso (Ley 21.719)</p></div>
+  <div class="acciones"><button class="boton" type="button" data-imprimir>Imprimir o guardar en PDF</button>
+    <a class="boton secundario" href="{% url 'cumplimiento:arco_detalle' s.pk %}">Volver a la solicitud</a></div>
+</div>
+{% if not clinico %}<div class="aviso info">Este informe no incluye contenido clínico: lo entrega el equipo psicosocial.</div>{% endif %}
+<article class="documento-informe">
+  <header class="doc-membrete">
+    <div class="doc-colegio">{{ NOMBRE_COLEGIO }}<small>Responsable del tratamiento de datos</small></div>
+    <div class="doc-confidencial">Documento confidencial</div>
+  </header>
+  <h2 class="doc-titulo">Informe de acceso a datos personales</h2>
+  <dl class="doc-datos">
+    <div><dt>Titular</dt><dd>{{ s.apoderado|priv:"nombre" }}</dd></div>
+    <div><dt>Estudiante</dt><dd>{{ d.estudiante.primer_nombre|priv:"nombre" }} {{ d.estudiante.apellido_paterno|priv:"nombre" }}</dd></div>
+    <div><dt>Fecha de emisión</dt><dd>{{ hoy|date:"d-m-Y" }}</dd></div>
+    <div><dt>Solicitud</dt><dd>n.º {{ s.pk }}, recibida el {{ s.fecha_recepcion|date:"d-m-Y" }}</dd></div>
+  </dl>
+  <div class="doc-cuerpo">
+    <p>En respuesta a su solicitud, informamos los datos personales del estudiante que trata la plataforma de bienestar
+      psicológico del establecimiento, su finalidad y quiénes pueden acceder a ellos.</p>
+    <h3>1. Datos de identificación</h3>
+    <table class="tabla tabla-doc"><tbody>
+      <tr><th>RUT</th><td>{{ d.estudiante.rut|rut|priv:"rut" }}</td></tr>
+      <tr><th>Nombres</th><td>{{ d.estudiante.primer_nombre|priv:"nombre" }} {{ d.estudiante.segundo_nombre|priv:"nombre" }}</td></tr>
+      <tr><th>Apellidos</th><td>{{ d.estudiante.apellido_paterno|priv:"nombre" }} {{ d.estudiante.apellido_materno|priv:"nombre" }}</td></tr>
+      {% if d.estudiante.nombre_social %}<tr><th>Nombre social</th><td>{{ d.estudiante.nombre_social|priv:"nombre" }}</td></tr>{% endif %}
+      <tr><th>Fecha de nacimiento</th><td>{{ d.estudiante.fecha_nacimiento|priv:"fecha" }}</td></tr>
+      <tr><th>Curso</th><td>{{ d.estudiante.curso }}</td></tr>
+      <tr><th>Necesidad educativa</th><td>{{ d.estudiante.necesidad_educativa }}{% if d.estudiante.en_pie %} · Programa de Integración Escolar{% endif %}</td></tr>
+    </tbody></table>
+    <h3>2. Apoderados registrados</h3>
+    <ul>{% for a in d.apoderados %}<li>{{ a.nombre|priv:"nombre" }} ({{ a.parentesco|lower }}{% if a.titular %}, titular{% endif %}) · {{ a.telefono|default:"sin teléfono"|priv:"contacto" }} · {{ a.correo|default:"sin correo"|priv:"contacto" }}</li>{% empty %}<li>Sin apoderados.</li>{% endfor %}</ul>
+    <h3>3. Consentimientos</h3>
+    <ul>{% for c in d.consentimientos %}<li>{{ c.alcance }}: otorgado el {{ c.otorgado }}{% if c.revocado %}, revocado el {{ c.revocado }}{% endif %}.</li>{% empty %}<li>Sin consentimientos registrados.</li>{% endfor %}</ul>
+    <h3>4. Registros de convivencia</h3>
+    <p>{{ d.anotaciones|length }} anotación{{ d.anotaciones|length|pluralize:"es" }} y {{ d.situacion_conductual|length }} registro{{ d.situacion_conductual|length|pluralize }} de situación conductual.</p>
+    {% if d.anotaciones %}<ul>{% for a in d.anotaciones %}<li>{{ a.fecha }} · {{ a.tipo }}: {{ a.descripcion|priv:"texto" }}</li>{% endfor %}</ul>{% endif %}
+    <h3>5. Planes de apoyo</h3>
+    <ul>{% for p in d.planes_de_apoyo %}<li>{{ p.tipo }} ({{ p.inicio }}{% if p.termino %} a {{ p.termino }}{% endif %}){% if p.adecuaciones %}: {{ p.adecuaciones|priv:"texto" }}{% endif %}</li>{% empty %}<li>Sin planes de apoyo.</li>{% endfor %}</ul>
+    <h3>6. Casos del equipo psicosocial</h3>
+    {% for c in d.casos %}
+      <p><strong>{{ c.tipo_proceso }}</strong> · {{ c.estado }} · abierto el {{ c.apertura }}{% if c.cierre %}, cerrado el {{ c.cierre }}{% endif %}.
+        {{ c.hitos|length }} hito{{ c.hitos|length|pluralize }}, {{ c.documentos|length }} documento{{ c.documentos|length|pluralize }}{% if clinico %}, {{ c.atenciones|length }} atención{{ c.atenciones|length|pluralize:"es" }}{% endif %}.</p>
+      {% if clinico and c.atenciones %}<ul>{% for a in c.atenciones %}<li>{{ a.fecha_hora|slice:":10" }} · {{ a.tipo }} · {{ a.motivo }}{% if a.descripcion %}: {{ a.descripcion|priv:"texto" }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+    {% empty %}<p>Sin casos registrados.</p>{% endfor %}
+    <h3>7. Finalidad, acceso y conservación</h3>
+    <p>Los datos se tratan para el seguimiento psicosocial y educativo del estudiante. Solo acceden las personas del
+      establecimiento cuyo rol lo requiere; cada acceso queda registrado en una bitácora de auditoría. Los registros se
+      conservan por 15 años desde el egreso o el cierre del último caso, y luego se anonimizan o eliminan con autorización
+      de la Dirección. El copiloto de IA recibe solo texto seudonimizado y únicamente con consentimiento vigente.</p>
+    <p>Puede ejercer además los derechos de rectificación, supresión, oposición, portabilidad y bloqueo ante el equipo psicosocial.</p>
+  </div>
+  <footer class="doc-firma"><div class="doc-linea-firma"></div><div>{{ s.responsable.nombre_completo }}<small>Por la responsable del tratamiento</small></div></footer>
+</article>
+{% endblock %}

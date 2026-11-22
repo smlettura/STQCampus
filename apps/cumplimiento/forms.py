@@ -4,7 +4,8 @@ from django.utils import timezone
 
 from apps.casos.models import Documento
 from apps.core.formularios import Formulario, FormularioModelo
-from apps.estudiantes.models import Apoderado
+from apps.core.validadores import normalizar_rut, normalizar_telefono
+from apps.estudiantes.models import Apoderado, Estudiante
 
 from .models import Consentimiento, RetencionEliminacion, SolicitudARCO
 
@@ -43,7 +44,8 @@ class RevocarConsentimientoForm(Formulario):
 class SolicitudARCOForm(FormularioModelo):
     class Meta:
         model = SolicitudARCO
-        fields = ["apoderado", "tipo_derecho", "fecha_recepcion"]
+        fields = ["apoderado", "tipo_derecho", "fecha_recepcion", "detalle"]
+        widgets = {"detalle": forms.Textarea(attrs={"rows": 3})}
 
     def __init__(self, *args, estudiante=None, responsable=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -55,7 +57,63 @@ class SolicitudARCOForm(FormularioModelo):
 class RespuestaARCOForm(FormularioModelo):
     class Meta:
         model = SolicitudARCO
-        fields = ["estado", "fecha_respuesta"]
+        fields = ["estado", "fecha_respuesta", "respuesta"]
+        widgets = {"respuesta": forms.Textarea(attrs={"rows": 5})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.initial.setdefault("fecha_respuesta", timezone.localdate())
+
+
+class RectificacionEstudianteForm(FormularioModelo):
+    """Datos del estudiante que el titular puede pedir corregir."""
+
+    class Meta:
+        model = Estudiante
+        fields = ["rut", "primer_nombre", "segundo_nombre", "apellido_paterno", "apellido_materno", "nombre_social",
+                  "fecha_nacimiento"]
+
+    def clean_rut(self):
+        rut = normalizar_rut(self.cleaned_data["rut"])
+        if Estudiante.objects.filter(rut=rut).exclude(pk=self.instance.pk).exists():
+            raise ValidationError("Ya existe un estudiante con este RUT.")
+        return rut
+
+
+class RectificacionApoderadoForm(FormularioModelo):
+    """Datos de contacto del apoderado que ejerce el derecho."""
+    prefix = "apo"
+
+    class Meta:
+        model = Apoderado
+        fields = ["nombre_completo", "telefono", "correo"]
+
+    def clean_telefono(self):
+        return normalizar_telefono(self.cleaned_data.get("telefono"))
+
+
+class SupresionForm(Formulario):
+    accion = forms.ChoiceField(label="Qué se propone a la Dirección", choices=RetencionEliminacion.ACCIONES,
+                               initial="anonimizar",
+                               help_text="Anonimizar conserva datos agregados sin identificar; eliminar borra el expediente.")
+    confirmar = forms.BooleanField(label="Revisé que no existe una obligación legal de conservar el expediente "
+                                         "(por ejemplo, un proceso judicial o de la Superintendencia en curso).")
+
+
+class OposicionForm(Formulario):
+    alcances = forms.MultipleChoiceField(label="Tratamientos a los que se opone", widget=forms.CheckboxSelectMultiple,
+                                         help_text="Se revocan hoy los consentimientos vigentes marcados.")
+
+    def __init__(self, *args, estudiante=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        vigentes = estudiante.consentimientos.filter(fecha_revocacion__isnull=True).values_list("alcance", flat=True)
+        nombres = dict(Consentimiento.ALCANCES)
+        self.fields["alcances"].choices = [(a, nombres.get(a, a)) for a in sorted(set(vigentes))]
+
+
+class BloqueoForm(Formulario):
+    motivo = forms.CharField(label="Motivo del bloqueo", max_length=255,
+                             help_text="Sin datos personales. Ej.: «Mientras se resuelve la rectificación solicitada».")
 
 
 class DecisionRetencionForm(Formulario):

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block titulo %}Carta de respuesta ARCO+{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Carta de respuesta</h1><p class="sub">Solicitud n.º {{ s.pk }} · {{ s.get_tipo_derecho_display }}</p></div>
+  <div class="acciones"><button class="boton" type="button" data-imprimir>Imprimir o guardar en PDF</button>
+    <a class="boton secundario" href="{% url 'cumplimiento:arco_detalle' s.pk %}">Volver a la solicitud</a></div>
+</div>
+<article class="documento-informe">
+  <header class="doc-membrete">
+    <div class="doc-colegio">{{ NOMBRE_COLEGIO }}<small>Responsable del tratamiento de datos</small></div>
+    <div class="doc-confidencial">{{ s.fecha_respuesta|date:"d \d\e F \d\e Y" }}</div>
+  </header>
+  <h2 class="doc-titulo">Respuesta a su solicitud de {{ s.get_tipo_derecho_display|lower }}</h2>
+  <div class="doc-cuerpo">
+    <p>Estimado(a) {{ s.apoderado|priv:"nombre" }}:</p>
+    <p>Con fecha {{ s.fecha_recepcion|date:"d-m-Y" }} recibimos su solicitud de <strong>{{ s.get_tipo_derecho_display|lower }}</strong>
+      respecto de los datos personales de {{ s.estudiante|priv:"nombre" }}, registrada con el n.º {{ s.pk }}.
+      {% if s.estado == "respondida" %}Su solicitud fue <strong>acogida</strong>.{% else %}Su solicitud fue <strong>rechazada</strong>.{% endif %}</p>
+    <div class="carta-respuesta">{{ s.respuesta|linebreaksbr|priv:"texto" }}</div>
+    {% if s.estado == "rechazada" %}<p>Si no está conforme con esta respuesta, puede reclamar ante la Agencia de Protección de Datos Personales.</p>{% endif %}
+    <p>Ante cualquier consulta, puede dirigirse al equipo psicosocial del establecimiento.</p>
+  </div>
+  <footer class="doc-firma"><div class="doc-linea-firma"></div><div>{{ s.responsable.nombre_completo }}<small>Por la responsable del tratamiento · {{ NOMBRE_COLEGIO }}</small></div></footer>
+</article>
+{% endblock %}

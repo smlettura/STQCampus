@@ -37,6 +37,17 @@ class FormularioBase:
                 widget.attrs.setdefault("class", "campo")
             if campo.required:
                 widget.attrs.setdefault("aria-required", "true")
+            _ocultar_etiquetas(campo)
+
+
+def _ocultar_etiquetas(campo):
+    """Modo privado: las listas desplegables de estudiantes y apoderados muestran solo iniciales."""
+    from apps.core import privacidad
+    if not isinstance(campo, forms.ModelChoiceField) or not privacidad.activo():
+        return
+    modelo = campo.queryset.model._meta.label_lower
+    if modelo in ("estudiantes.estudiante", "estudiantes.apoderado"):
+        campo.label_from_instance = lambda obj: privacidad.iniciales(str(obj))
 
 
 class Formulario(FormularioBase, forms.Form):

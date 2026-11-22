@@ -11,8 +11,8 @@
 <div class="rejilla-2">
   <div class="tarjeta">
     <h2>Observaciones</h2>
-    <p style="white-space:pre-line">{{ p.observaciones|default:"Sin observaciones." }}</p>
-    {% if p.estudiante %}<p class="ayuda">Estudiante: {% if "estudiante.ver_todos" in permisos %}<a href="{% url 'estudiantes:detalle' p.estudiante_id %}">{{ p.estudiante }}</a>{% else %}{{ p.estudiante }}{% endif %}</p>{% endif %}
+    <p style="white-space:pre-line">{{ p.observaciones|default:"Sin observaciones."|priv:"texto" }}</p>
+    {% if p.estudiante %}<p class="ayuda">Estudiante: {% if "estudiante.ver_todos" in permisos %}<a href="{% url 'estudiantes:detalle' p.estudiante_id %}">{{ p.estudiante|priv:"nombre" }}</a>{% else %}{{ p.estudiante|priv:"nombre" }}{% endif %}</p>{% endif %}
     {% if p.alerta_id %}<p class="ayuda">Originado en la <a href="{% url 'alertas:detalle' p.alerta_id %}">alerta de riesgo N° {{ p.alerta_id }}</a> (acceso según el reglamento).</p>{% endif %}
   </div>
   {% if form %}

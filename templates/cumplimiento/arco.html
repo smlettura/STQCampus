@@ -3,17 +3,43 @@
 {% block titulo %}Solicitudes ARCO+{% endblock %}
 {% block contenido %}
 <div class="encabezado">
-  <div><h1>Solicitudes de derechos ARCO+</h1><p class="sub">Acceso, rectificación, supresión, oposición, portabilidad y bloqueo (RF-12). Se registran desde la ficha del estudiante.</p></div>
-  <div class="acciones"><a class="boton secundario" href="?pendientes={% if request.GET.pendientes == '0' %}1{% else %}0{% endif %}">{% if request.GET.pendientes == '0' %}Ver pendientes{% else %}Ver todas{% endif %}</a></div>
+  <div><h1>Solicitudes de derechos ARCO+</h1><p class="sub">Acceso, rectificación, supresión, oposición, portabilidad y bloqueo (Ley 21.719, RF-12).</p></div>
+  <form class="nueva-arco" method="get" action="{% url 'cumplimiento:arco_buscar' %}" role="search">
+    <label class="oculto-accesible" for="arco-estudiante">Estudiante para la nueva solicitud</label>
+    <input class="campo" type="search" id="arco-estudiante" autocomplete="off" placeholder="Nueva solicitud: buscar estudiante…"
+      data-sugerencias="{% url 'estudiantes:sugerencias' %}" data-destino="{% url 'cumplimiento:arco_buscar' %}?estudiante={id}">
+    <button class="boton" type="submit">{% icono "mas" 16 %}<span class="texto-boton">Nueva solicitud</span></button>
+  </form>
 </div>
+<div class="kpis">
+  <a class="kpi" href="?vista=pendientes"><span class="rotulo">Pendientes</span><span class="valor">{{ kpis.pendientes }}</span><span class="detalle">recibidas o en análisis</span></a>
+  <a class="kpi{% if kpis.vencidas %} kpi-alerta{% endif %}" href="?vista=vencidas"><span class="rotulo">Vencidas</span><span class="valor">{{ kpis.vencidas }}</span><span class="detalle">fuera de plazo</span></a>
+  <div class="kpi"><span class="rotulo">Vencen en 5 días</span><span class="valor">{{ kpis.por_vencer }}</span><span class="detalle">priorizar</span></div>
+  <a class="kpi" href="?vista=cerradas"><span class="rotulo">Cerradas este mes</span><span class="valor">{{ kpis.cerradas_mes }}</span><span class="detalle">respondidas o rechazadas</span></a>
+</div>
+<nav class="pestanas" aria-label="Vista">
+  <a href="?vista=pendientes" class="{% if vista == 'pendientes' %}activo{% endif %}">Pendientes <span class="n">{{ kpis.pendientes }}</span></a>
+  <a href="?vista=vencidas" class="{% if vista == 'vencidas' %}activo{% endif %}">Vencidas <span class="n">{{ kpis.vencidas }}</span></a>
+  <a href="?vista=cerradas" class="{% if vista == 'cerradas' %}activo{% endif %}">Cerradas</a>
+  <a href="?vista=todas" class="{% if vista == 'todas' %}activo{% endif %}">Todas</a>
+</nav>
+<form class="filtros" method="get">
+  <input type="hidden" name="vista" value="{{ vista }}">
+  <label>Derecho <select class="campo" name="derecho" data-autoenvio><option value="">Todos</option>
+    {% for c, t in derechos %}<option value="{{ c }}"{% if c == derecho %} selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+  <input class="campo" type="search" name="q" value="{{ q }}" placeholder="Filtrar por estudiante…" aria-label="Filtrar por estudiante">
+  <button class="boton secundario" type="submit">Filtrar</button>
+</form>
 <div class="tarjeta tabla-scroll"><table class="tabla">
-  <thead><tr><th>Estudiante</th><th>Apoderado</th><th>Derecho</th><th>Recepción</th><th>Plazo</th><th>Estado</th></tr></thead><tbody>
+  <thead><tr><th>Estudiante</th><th>Titular</th><th>Derecho</th><th>Recepción</th><th>Plazo</th><th>Estado</th><th><span class="oculto-accesible">Abrir</span></th></tr></thead><tbody>
   {% for s in solicitudes %}<tr>
-    <td data-rotulo="Estudiante"><a href="{% url 'cumplimiento:arco_detalle' s.pk %}">{{ s.estudiante|default:"(expediente eliminado)" }}</a></td>
-    <td data-rotulo="Apoderado">{{ s.apoderado }}</td><td data-rotulo="Derecho">{{ s.get_tipo_derecho_display }}</td>
+    <td data-rotulo="Estudiante"><a href="{% url 'cumplimiento:arco_detalle' s.pk %}">{{ s.estudiante|priv:"nombre" }}</a><span class="sub-celda">{{ s.estudiante.curso.nombre }}</span></td>
+    <td data-rotulo="Titular">{{ s.apoderado|priv:"nombre" }}</td>
+    <td data-rotulo="Derecho"><span class="insignia derecho-{{ s.tipo_derecho }}">{{ s.get_tipo_derecho_display }}</span></td>
     <td data-rotulo="Recepción">{{ s.fecha_recepcion|date:"d-m-Y" }}</td>
-    <td data-rotulo="Plazo">{{ s.fecha_limite|date:"d-m-Y" }}{% if s.vencida %} <span class="insignia rojo">vencida</span>{% endif %}</td>
-    <td data-rotulo="Estado"><span class="insignia {{ s.estado|color_estado }}">{{ s.get_estado_display }}</span></td></tr>
-  {% empty %}<tr><td colspan="6" class="vacio">No hay solicitudes.</td></tr>{% endfor %}
+    <td data-rotulo="Plazo">{{ s.fecha_limite|date:"d-m-Y" }}{% if s.vencida %} <span class="insignia rojo">vencida</span>{% elif s.estado == "recibida" or s.estado == "en_analisis" %}<span class="sub-celda">{{ s.fecha_limite|timeuntil:hoy }}</span>{% endif %}</td>
+    <td data-rotulo="Estado"><span class="insignia {{ s.estado|color_estado }}">{{ s.get_estado_display }}</span></td>
+    <td><a class="boton secundario chico" href="{% url 'cumplimiento:arco_detalle' s.pk %}">Gestionar</a></td></tr>
+  {% empty %}<tr><td colspan="7" class="vacio">No hay solicitudes en esta vista.</td></tr>{% endfor %}
 </tbody></table></div>
 {% endblock %}
