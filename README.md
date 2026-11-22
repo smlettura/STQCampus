@@ -272,6 +272,17 @@ S3 para adjuntos (SSE-KMS) y para la copia inmutable de la bitácora (Object Loc
 y EventBridge Scheduler, que ejecuta `python manage.py ejecutar_tarea diaria|mensual` mediante Systems Manager.
 Las variables de AWS están en `.env.example` y los pasos en `deploy/aws/README.md`.
 
+En AWS Academy (Learner Lab) la instancia se suspende al terminar cada sesión, así que las tareas se programan con
+cron dentro de la jornada (hora UTC) y no de madrugada:
+
+```
+15 11-23 * * * docker exec stq-app python manage.py ejecutar_tarea diaria
+0 13 1 * * docker exec stq-app python manage.py ejecutar_tarea mensual
+```
+
+La tarea diaria se puede ejecutar varias veces al día: los avisos de reevaluación no se duplican y la copia de la
+bitácora recupera los días que quedaron sin copiar mientras el servidor estuvo apagado (hasta 60 días).
+
 ### Con Docker (MySQL + aplicación + buzón de correo)
 
 ```bash
