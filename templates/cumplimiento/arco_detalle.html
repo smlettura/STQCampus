@@ -5,7 +5,8 @@
 <div class="encabezado">
   <div><h1>{{ s.get_tipo_derecho_display }} · {{ s.estudiante|priv:"nombre" }}</h1>
     <p class="sub">Solicitud n.º {{ s.pk }} · titular {{ s.apoderado|priv:"nombre" }} · recibida el {{ s.fecha_recepcion|date:"d-m-Y" }}
-      · plazo {{ s.fecha_limite|date:"d-m-Y" }}
+      · plazo legal {{ s.fecha_limite|date:"d-m-Y" }}{% if s.tipo_derecho == "bloqueo" %} (2 días hábiles){% endif %}
+      {% if s.meta_sla < s.fecha_limite %}· meta SLA-07 {{ s.meta_sla|date:"d-m-Y" }}{% endif %}
       <span class="insignia {{ s.estado|color_estado }}">{{ s.get_estado_display }}</span>
       {% if s.vencida %}<span class="insignia rojo">vencida</span>{% endif %}</p></div>
   <div class="acciones">

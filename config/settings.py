@@ -302,7 +302,11 @@ RETENCION_ANIOS = 15                     # RNF-10: plazo de conservación (decis
 REEVALUACION_ANIOS_TRANSITORIA = 2       # RF-08: reevaluación bianual de NEE transitorias
 AVISO_REEVALUACION_DIAS = int(env("AVISO_REEVALUACION_DIAS", "60"))
 PLAZO_DENUNCIA_HORAS = 24                # Código Procesal Penal, arts. 175 y 176
-ARCO_PLAZO_DIAS = int(env("ARCO_PLAZO_DIAS", "30"))   # ajustar al plazo legal vigente
+# Plazos ARCO+ (Ley 21.719): 30 días corridos para responder (prorrogables una vez); si la solicitud pide el bloqueo
+# temporal de los datos, 2 días hábiles. La meta interna del SLA-07 (10 días hábiles) es más exigente que la ley.
+ARCO_PLAZO_DIAS = int(env("ARCO_PLAZO_DIAS", "30"))
+ARCO_PLAZO_BLOQUEO_HABILES = int(env("ARCO_PLAZO_BLOQUEO_HABILES", "2"))
+ARCO_META_HABILES = int(env("ARCO_META_HABILES", "10"))
 # Las tareas diaria y mensual se ejecutan con «python manage.py ejecutar_tarea diaria|mensual», que en AWS dispara
 # EventBridge Scheduler mediante Systems Manager Run Command. TAREAS_TOKEN solo habilita el punto HTTP de respaldo.
 TAREAS_TOKEN = env("TAREAS_TOKEN", "")

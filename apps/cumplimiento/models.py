@@ -72,6 +72,15 @@ class Consentimiento(models.Model):
             raise ValidationError(errores)
 
 
+def sumar_dias_habiles(fecha, dias):
+    """Suma días hábiles (lunes a viernes). No descuenta feriados: el plazo resultante nunca es más largo que el real."""
+    while dias > 0:
+        fecha += datetime.timedelta(days=1)
+        if fecha.weekday() < 5:
+            dias -= 1
+    return fecha
+
+
 class SolicitudARCO(models.Model):
     DERECHOS = [("acceso", "Acceso"), ("rectificacion", "Rectificación"), ("supresion", "Supresión (cancelación)"),
                 ("oposicion", "Oposición"), ("portabilidad", "Portabilidad"), ("bloqueo", "Bloqueo")]
@@ -114,15 +123,28 @@ class SolicitudARCO(models.Model):
     def vencida(self):
         return self.estado in ("recibida", "en_analisis") and self.fecha_limite < timezone.localdate()
 
+    def calcular_limite(self):
+        """Plazo legal: 2 días hábiles si se pide el bloqueo temporal; 30 días corridos en los demás derechos."""
+        if self.tipo_derecho == "bloqueo":
+            return sumar_dias_habiles(self.fecha_recepcion, settings.ARCO_PLAZO_BLOQUEO_HABILES)
+        return self.fecha_recepcion + datetime.timedelta(days=settings.ARCO_PLAZO_DIAS)
+
+    @property
+    def meta_sla(self):
+        """Meta interna del SLA-07 (10 días hábiles), sin pasar del plazo legal."""
+        if not self.fecha_recepcion:
+            return None
+        return min(sumar_dias_habiles(self.fecha_recepcion, settings.ARCO_META_HABILES), self.fecha_limite or self.calcular_limite())
+
     def save(self, *args, **kwargs):
         if self.fecha_recepcion and not self.fecha_limite:
-            self.fecha_limite = self.fecha_recepcion + datetime.timedelta(days=settings.ARCO_PLAZO_DIAS)
+            self.fecha_limite = self.calcular_limite()
         super().save(*args, **kwargs)
 
     def clean(self):
         errores = {}
         if self.fecha_recepcion:
-            self.fecha_limite = self.fecha_recepcion + datetime.timedelta(days=settings.ARCO_PLAZO_DIAS)
+            self.fecha_limite = self.calcular_limite()
         if self.estudiante_id and self.apoderado_id and \
                 not self.estudiante.vinculos_apoderado.filter(apoderado_id=self.apoderado_id).exists():
             errores["apoderado"] = "Solo un apoderado vinculado al estudiante puede ejercer estos derechos."

@@ -377,6 +377,13 @@ El sistema maneja datos personales sensibles de estudiantes. Por eso considera:
 - **Retención**: 15 años. La eliminación o anonimización requiere autorización de la Directora.
 - **Ley 21.719**: el tratamiento de datos se ajusta a la ley sobre protección de datos personales.
 
+## Plazos ARCO+
+
+Según la Ley N° 21.719, el responsable tiene 30 días corridos para responder (prorrogables una vez) y 2 días hábiles
+cuando la solicitud pide el bloqueo temporal de los datos (`ARCO_PLAZO_DIAS`, `ARCO_PLAZO_BLOQUEO_HABILES`). El panel
+muestra además la meta interna del SLA-07, de 10 días hábiles (`ARCO_META_HABILES`). Los días hábiles no descuentan
+feriados, así que el plazo calculado nunca es más largo que el real.
+
 ## Tareas programadas
 
 | Tarea | Qué hace | Comandos |
@@ -387,7 +394,6 @@ El sistema maneja datos personales sensibles de estudiantes. Por eso considera:
 
 ## Puntos por confirmar con el colegio
 
-- Plazo de respuesta ARCO+ (`ARCO_PLAZO_DIAS`, 30 por defecto).
 - Definición del índice de bienestar. La propuesta actual es el porcentaje de estudiantes activos sin señales de riesgo
   en el año: caso urgente abierto, alerta, falta gravísima o asistencia bajo 85 %.
 - Quién procesa la promoción de fin de año. Hoy lo hace el administrador y se habilita desde el 1 de noviembre.
