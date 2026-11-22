@@ -3,7 +3,7 @@
 El enmascaramiento ocurre en el servidor, al dibujar las plantillas: con el modo activo, los nombres, RUT, contactos,
 fechas de nacimiento y textos clínicos no llegan al navegador. Solo afecta a la presentación; la lógica del sistema
 (seudonimización del copiloto, exportaciones ARCO+, validaciones) siempre trabaja con los datos reales.
-Para volver a ver los datos se exige reautenticación (contraseña y, si corresponde, segundo factor).
+Se activa y desactiva con un clic desde el botón del ojo en la barra superior.
 """
 from apps.core.middleware import solicitud_actual
 
@@ -47,7 +47,7 @@ def mostrar(valor, tipo="nombre", request=None):
 
 def datos_visibles(vista=None, *, cuando=None):
     """Decorador para pantallas de edición: los formularios precargados muestran los datos reales en sus campos, así
-    que con el modo privado activo primero se pide reautenticación. `cuando(request, *args, **kwargs)` limita el
+    que al entrar con el modo privado activo este se desactiva y se avisa al usuario. `cuando(request, *args, **kwargs)` limita el
     control a ciertos casos (por ejemplo, solo al editar un registro existente)."""
     from functools import wraps
 
@@ -56,11 +56,8 @@ def datos_visibles(vista=None, *, cuando=None):
         def envoltura(request, *args, **kwargs):
             if activo(request) and (cuando is None or cuando(request, *args, **kwargs)):
                 from django.contrib import messages
-                from django.shortcuts import redirect
-                from django.urls import reverse
-                from django.utils.http import urlencode
-                messages.info(request, "Esta pantalla muestra datos sensibles para editarlos: confirme su identidad para continuar.")
-                return redirect("%s?%s" % (reverse("cuentas:privacidad_mostrar"), urlencode({"next": request.get_full_path()})))
+                request.session[CLAVE_SESION] = False
+                messages.info(request, "Modo privado desactivado: esta pantalla muestra los datos para editarlos.")
             return funcion(request, *args, **kwargs)
         return envoltura
     return decorador(vista) if vista is not None else decorador

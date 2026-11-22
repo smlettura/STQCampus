@@ -1,4 +1,4 @@
-"""Modo privado (ocultar datos sensibles con reautenticación), avisos modernos y panel ARCO+ completo."""
+"""Modo privado (ocultar y mostrar datos sensibles con un clic), avisos modernos y panel ARCO+ completo."""
 import datetime
 
 from django.urls import reverse
@@ -6,7 +6,6 @@ from django.utils import timezone
 
 from apps.auditoria.models import EventoAuditoria
 from apps.core import privacidad
-from apps.cuentas import totp
 from apps.cumplimiento import servicios as cumplimiento
 from apps.cumplimiento.models import (AccionARCO, BloqueoTratamiento, Consentimiento, RetencionEliminacion,
                                       SolicitudARCO)
@@ -28,7 +27,7 @@ class ModoPrivadoTest(PruebaBase):
         self.assertEqual(privacidad.enmascarar("24512331-5", "rut"), privacidad.OCULTO_RUT)
         self.assertEqual(privacidad.enmascarar("", "texto"), "")
 
-    def test_ocultar_y_volver_a_mostrar_con_contrasena(self):
+    def test_ocultar_y_volver_a_mostrar_con_un_clic(self):
         r = self.cli.get(self.ficha)
         self.assertContains(r, "Martina")
         self.assertContains(r, 'aria-label="Ocultar datos sensibles"')
@@ -39,40 +38,13 @@ class ModoPrivadoTest(PruebaBase):
         self.assertContains(r, "M. P.")
         self.assertContains(r, "Modo privado.")
         self.assertContains(r, privacidad.OCULTO_RUT)
-        # Contraseña incorrecta: los datos siguen ocultos.
         url = reverse("cuentas:privacidad_mostrar")
-        r = self.cli.post(url, {"contrasena": "incorrecta", "next": self.ficha})
-        self.assertContains(r, "Le quedan 4 intentos")
-        self.assertNotContains(self.cli.get(self.ficha), "Martina")
-        # Contraseña correcta: vuelven a verse.
-        self.assertRedirects(self.cli.post(url, {"contrasena": CLAVE, "next": self.ficha}), self.ficha)
+        self.assertEqual(self.cli.get(url).status_code, 405)           # solo por POST (con token CSRF)
+        self.assertRedirects(self.cli.post(url, {"next": self.ficha}), self.ficha)
         self.assertContains(self.cli.get(self.ficha), "Martina")
         detalles = list(EventoAuditoria.objects.filter(entidad="sesion").values_list("detalle", flat=True))
         self.assertIn("modo privado activado", detalles)
-        self.assertIn("modo privado desactivado con reautenticación", detalles)
-        self.assertIn("reautenticación fallida (modo privado)", detalles)
-
-    def test_con_segundo_factor_pide_codigo(self):
-        self.psicologa.secreto_totp = totp.nuevo_secreto()
-        self.psicologa.mfa_activo = True
-        self.psicologa.save()
-        self.ocultar()
-        url = reverse("cuentas:privacidad_mostrar")
-        r = self.cli.post(url, {"contrasena": CLAVE, "codigo": "000000", "next": self.ficha})
-        self.assertEqual(r.status_code, 200)
-        self.assertNotContains(self.cli.get(self.ficha), "Martina")
-        import pyotp
-        codigo = pyotp.TOTP(self.psicologa.secreto_totp).now()
-        self.assertRedirects(self.cli.post(url, {"contrasena": CLAVE, "codigo": codigo, "next": self.ficha}), self.ficha)
-
-    def test_demasiados_intentos_cierra_la_sesion(self):
-        self.ocultar()
-        url = reverse("cuentas:privacidad_mostrar")
-        for _ in range(4):
-            self.cli.post(url, {"contrasena": "x"})
-        r = self.cli.post(url, {"contrasena": "x"})
-        self.assertRedirects(r, reverse("cuentas:login"), fetch_redirect_response=False)
-        self.assertEqual(self.cli.get(self.ficha).status_code, 302)
+        self.assertIn("modo privado desactivado", detalles)
 
     def test_sugerencias_y_listas_ocultas(self):
         self.ocultar()
@@ -81,16 +53,13 @@ class ModoPrivadoTest(PruebaBase):
         self.assertNotIn(self.estudiante.rut[:4], datos[0]["detalle"])
         self.assertNotContains(self.cli.get(reverse("estudiantes:lista")), "Martina")
 
-    def test_pantallas_de_edicion_piden_reautenticacion(self):
-        self.ocultar()
+    def test_pantallas_de_edicion_desactivan_el_modo_privado(self):
         editar = reverse("estudiantes:editar", args=[self.estudiante.pk])
-        r = self.cliente(self.admin).get(editar)       # otra sesión, sin modo privado: entra normal
+        self.ocultar()
+        r = self.cli.get(editar)
         self.assertEqual(r.status_code, 200)
-        cli = self.cliente(self.admin)
-        cli.post(reverse("cuentas:privacidad_ocultar"))
-        r = cli.get(editar)
-        self.assertEqual(r.status_code, 302)
-        self.assertIn(reverse("cuentas:privacidad_mostrar"), r["Location"])
+        self.assertContains(r, "Modo privado desactivado")
+        self.assertContains(self.cli.get(self.ficha), "Martina")
 
     def test_los_datos_reales_no_cambian(self):
         """El modo privado solo afecta la presentación: la seudonimización del copiloto sigue usando el nombre real."""

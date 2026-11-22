@@ -17,7 +17,7 @@ from apps.auditoria.servicios import registrar
 
 from . import totp
 from .forms import (AsignacionRolForm, CambioContrasenaForm, CodigoForm, IngresoForm, NuevaContrasenaForm, PerfilForm,
-                    ReautenticacionForm, RestablecerContrasenaForm, UsuarioCrearForm, UsuarioEditarForm, otros_administradores)
+                    RestablecerContrasenaForm, UsuarioCrearForm, UsuarioEditarForm, otros_administradores)
 from .models import Usuario, UsuarioRol
 from .permisos import permiso_requerido
 
@@ -124,7 +124,6 @@ def verificar_2fa(request):
 
 
 # ------------------------------------------------------------------ modo privado
-MAX_INTENTOS_PRIVACIDAD = 5
 
 
 @login_required
@@ -139,36 +138,14 @@ def privacidad_ocultar(request):
 
 
 @login_required
+@require_POST
 def privacidad_mostrar(request):
-    """Volver a ver los datos exige reautenticarse (contraseña y segundo factor si la cuenta lo tiene)."""
+    """Un clic: vuelve a mostrar los datos sensibles en esta sesión."""
     from apps.core import privacidad
-    usuario = request.user
-    destino = _siguiente(request, "")
-    if not privacidad.activo(request):
-        return redirect(destino or "core:inicio")
-    clave = "intentos_privacidad:%s" % usuario.pk
-    form = ReautenticacionForm(request.POST or None, usuario=usuario)
-    if request.method == "POST" and form.is_valid():
-        correcto = usuario.check_password(form.cleaned_data["contrasena"])
-        if correcto and form.pide_codigo:
-            correcto = totp.verificar_codigo(usuario.secreto_totp, form.cleaned_data["codigo"], usuario.pk)
-        if correcto:
-            cache.delete(clave)
-            request.session[privacidad.CLAVE_SESION] = False
-            registrar(usuario, "consulta", "sesion", usuario.pk, detalle="modo privado desactivado con reautenticación")
-            messages.success(request, "Datos visibles nuevamente.")
-            return redirect(destino or "core:inicio")
-        intentos = cache.get(clave, 0) + 1
-        cache.set(clave, intentos, 15 * 60)
-        registrar(usuario, "acceso_denegado", "sesion", usuario.pk, detalle="reautenticación fallida (modo privado)")
-        if intentos >= MAX_INTENTOS_PRIVACIDAD:
-            cache.delete(clave)
-            logout(request)
-            messages.error(request, "Demasiados intentos fallidos. Vuelva a iniciar sesión.")
-            return redirect("cuentas:login")
-        form.add_error(None, "Los datos ingresados no son correctos. Le quedan %d intentos."
-                       % (MAX_INTENTOS_PRIVACIDAD - intentos))
-    return render(request, "cuentas/privacidad_mostrar.html", {"form": form, "next": destino})
+    request.session[privacidad.CLAVE_SESION] = False
+    registrar(request.user, "modificacion", "sesion", request.user.pk, detalle="modo privado desactivado")
+    messages.info(request, "Modo privado desactivado: los datos vuelven a verse.")
+    return redirect(_siguiente(request))
 
 
 @login_required

@@ -179,28 +179,3 @@ class NuevaContrasenaForm(FormularioBase, SetPasswordForm):
         if commit:
             usuario.save()
         return usuario
-
-
-
-class ReautenticacionForm(Formulario):
-    """Para volver a ver los datos sensibles: contraseña y, si la cuenta lo tiene, el código del segundo factor."""
-    contrasena = forms.CharField(label="Contraseña", strip=False,
-                                 widget=forms.PasswordInput(attrs={"autocomplete": "current-password", "autofocus": True}))
-    codigo = forms.CharField(label="Código de 6 dígitos", max_length=7, required=False,
-                             widget=forms.TextInput(attrs={"inputmode": "numeric", "autocomplete": "one-time-code",
-                                                           "pattern": r"\d{3}\s?\d{3}"}))
-
-    def __init__(self, *args, usuario=None, **kwargs):
-        self.usuario = usuario
-        super().__init__(*args, **kwargs)
-        self.pide_codigo = bool(usuario and usuario.mfa_activo and usuario.secreto_totp)
-        if self.pide_codigo:
-            self.fields["codigo"].required = True
-        else:
-            del self.fields["codigo"]
-
-    def clean_codigo(self):
-        codigo = (self.cleaned_data.get("codigo") or "").replace(" ", "")
-        if self.pide_codigo and (not codigo.isdigit() or len(codigo) != 6):
-            raise ValidationError("El código tiene 6 dígitos.")
-        return codigo

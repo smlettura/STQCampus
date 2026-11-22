@@ -752,7 +752,8 @@ a.kpi:not([href]):hover { border-color: var(--borde); box-shadow: none; }
   border-radius: var(--radio-sm); background: var(--activo-pill); color: #E5E7EB; font-size: 13px; }
 .banda-privado svg { flex-shrink: 0; color: #fff; }
 .banda-privado strong { color: #fff; }
-.banda-privado a { margin-left: auto; color: #fff; font-weight: 700; text-decoration: underline; }
+.banda-privado form { margin-left: auto; }
+.banda-privado a, .banda-privado button.enlace { color: #fff; font-weight: 700; text-decoration: underline; }
 .icono-titulo { width: 44px; height: 44px; border-radius: 50%; background: var(--primario-tenue); color: var(--primario);
   display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px; }
 
